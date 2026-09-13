@@ -1,0 +1,48 @@
+name: tygris_mobile
+description: TYGRIS field companion — wildlife monitoring mobile app for Pench Tiger Reserve rangers.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Networking
+  dio: ^5.7.0
+
+  # State management
+  flutter_riverpod: ^2.6.1
+
+  # Routing
+  go_router: ^14.6.2
+
+  # Maps
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Media
+  image_picker: ^1.1.2
+  camera: ^0.11.0+2
+  cached_network_image: ^3.4.1
+
+  # UI polish
+  google_fonts: ^6.2.1
+  fl_chart: ^0.69.2
+  shimmer: ^3.0.0
+  intl: ^0.19.0
+
+  # Local persistence / offline
+  shared_preferences: ^2.3.3
+  connectivity_plus: ^6.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
