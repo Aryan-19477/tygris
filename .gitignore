@@ -1,0 +1,94 @@
+# ==========================================
+# TYGRIS Prototype - Git Ignore Rules
+# Tracks only the working prototype (frontend-v2, backend, docs, scripts)
+# Excludes raw datasets, model weights, and legacy/experimental folders
+# ==========================================
+
+# Datasets & Heavy Experiments (Kept locally on disk, excluded from Git)
+/ntlnp_raw/
+/final_data/
+/detection/
+/detectiontest/
+/detectiontrainval/
+/identification/
+/posetrain/
+/poseval/
+/reid_raw/
+/tiger_trace/
+/tygris-research-model/
+/tygris-synthetic/
+/ui inspo/
+/frontend/
+
+# Large Model Weights & Checkpoints (>100MB hard limit on GitHub)
+*.h5
+*.keras
+*.weights.h5
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.bin
+*.tflite
+/resnet50_model.h5
+/resnet50_model.keras
+/resnet50_model_weights.weights.h5
+/efficientnetb3_notop.h5
+
+# Root duplicate PDF & notebook
+/1-s2.0-S1470160X25001566-main.pdf
+/klasifikasi-gambar.ipynb
+
+# Environment & Secrets (NEVER COMMIT SENSITIVE KEYS)
+.env
+.env.*
+*.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Frontend Build & Dependencies
+node_modules/
+*/node_modules/
+.next/
+*/.next/
+out/
+build/
+dist/
+.turbo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.tsbuildinfo
+next-env.d.ts
+
+# Python Artifacts & Virtual Environments
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# System & Editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.claude/
+.idea/
+.vscode/
+*.log
+dev_log.txt
+
+# Screenshots & Dumps (Permit assets inside public/ and docs/)
+*.png
+!frontend-v2/public/**
+!docs/**

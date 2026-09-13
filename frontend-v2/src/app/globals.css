@@ -1,0 +1,167 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+:root {
+  /* Institutional field-report theme: warm paper base, forest-green
+     accent, ink text — reads as a real department tool, not a dark
+     ops-center dashboard. */
+  --background: #F7F5F0;
+  --surface: #FFFFFF;
+  --surface-sunken: #F0EDE5;
+  --card: #FFFFFF;
+  --foreground: #1F2420;
+  --muted: #6B7268;
+  --border: #E2DFD6;
+  --border-strong: #CBC6B7;
+
+  --nav: #FFFFFF;
+  --nav-foreground: #1F2420;
+  --nav-muted: #6B7268;
+  --nav-active: #2F5233;
+  --nav-active-bg: #E7EDE3;
+  --nav-active-border: #B9CBB4;
+  --nav-border: #CBC6B7;
+
+  --accent: #2F5233;
+  --accent-strong: #24401F;
+  --accent-soft: rgba(47, 82, 51, 0.1);
+  --accent-foreground: #ffffff;
+
+  --positive: #2F5233;
+  --positive-soft: rgba(47, 82, 51, 0.1);
+  --caution: #9C6B1E;
+  --caution-soft: rgba(156, 107, 30, 0.12);
+  --danger: #A23B2C;
+  --danger-soft: rgba(162, 59, 44, 0.1);
+
+  --priority-high: #A23B2C;
+  --priority-medium: #9C6B1E;
+  --priority-low: #2F5233;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-nav: var(--nav);
+  --color-nav-foreground: var(--nav-foreground);
+  --color-nav-muted: var(--nav-muted);
+  --color-nav-active: var(--nav-active);
+  --color-nav-active-bg: var(--nav-active-bg);
+  --color-nav-active-border: var(--nav-active-border);
+  --color-nav-border: var(--nav-border);
+
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-positive: var(--positive);
+  --color-positive-soft: var(--positive-soft);
+  --color-caution: var(--caution);
+  --color-caution-soft: var(--caution-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --color-priority-high: var(--priority-high);
+  --color-priority-medium: var(--priority-medium);
+  --color-priority-low: var(--priority-low);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(47, 82, 51, 0.18);
+  color: var(--foreground);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* GIS Map Leaflet Custom Tooltip & Overlay Styles — the map basemap is
+   satellite imagery regardless of app theme, so its chrome (tooltips,
+   legend, popups) stays a dark glass overlay for legibility on photos,
+   independent of the light/dark app theme above. */
+.leaflet-popup-content-wrapper {
+  background: #17181A !important;
+  color: #EDEDEA !important;
+  border: 1px solid #2A2C2F !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.5) !important;
+}
+
+.leaflet-popup-tip {
+  background: #17181A !important;
+}
+
+.gis-map-tooltip {
+  background: rgba(23, 24, 26, 0.95) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 8px !important;
+  padding: 6px 10px !important;
+  font-size: 11px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+.gis-map-tooltip::before {
+  border-top-color: rgba(23, 24, 26, 0.95) !important;
+}
+
+/* Slide-over panel (station upload, dossier peek) */
+.slideover-backdrop {
+  background: rgba(31, 36, 32, 0.4);
+  backdrop-filter: blur(2px);
+}
+
+/* Single-handle range input (sighting window slider) */
+.range-slider-thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--background);
+  box-shadow: 0 0 6px var(--accent-soft);
+  cursor: pointer;
+}
+.range-slider-thumb::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--background);
+  box-shadow: 0 0 6px var(--accent-soft);
+  cursor: pointer;
+}
+.range-slider-thumb::-webkit-slider-runnable-track,
+.range-slider-thumb::-moz-range-track {
+  background: transparent;
+}
