@@ -1,0 +1,64 @@
+Building embedding model from pretrained backbone...
+Trainable params: 16,025,088
+Training pool: 1566 images across 107 identities
+
+Baseline (before fine-tune):
+evaluating on 321 held-out images across 107 identities
+rank-1 accuracy (leave-one-out within held-out set): 0.9470
+rank-2 accuracy (leave-one-out within held-out set): 0.9688
+rank-3 accuracy (leave-one-out within held-out set): 0.9782
+rank-4 accuracy (leave-one-out within held-out set): 0.9844
+rank-5 accuracy (leave-one-out within held-out set): 0.9844
+
+Training for 40 epochs x 80 steps (batch = 5x4)...
+
+epoch  1/40  loss=0.0382  (26.6s, 0.33s/step)
+epoch  2/40  loss=0.0181  (26.3s, 0.33s/step)
+epoch  3/40  loss=0.0074  (24.8s, 0.31s/step)
+epoch  4/40  loss=0.0147  (22.5s, 0.28s/step)
+epoch  5/40  loss=0.0031  (25.7s, 0.32s/step)
+epoch  6/40  loss=0.0045  (25.5s, 0.32s/step)
+epoch  7/40  loss=0.0110  (25.3s, 0.32s/step)
+epoch  8/40  loss=0.0115  (22.7s, 0.28s/step)
+epoch  9/40  loss=0.0084  (25.5s, 0.32s/step)
+epoch 10/40  loss=0.0116  (30.3s, 0.38s/step)
+epoch 11/40  loss=0.0062  (26.6s, 0.33s/step)
+epoch 12/40  loss=0.0065  (25.9s, 0.32s/step)
+epoch 13/40  loss=0.0057  (26.4s, 0.33s/step)
+epoch 14/40  loss=0.0028  (25.2s, 0.32s/step)
+epoch 15/40  loss=0.0054  (22.4s, 0.28s/step)
+epoch 16/40  loss=0.0044  (25.3s, 0.32s/step)
+epoch 17/40  loss=0.0042  (24.9s, 0.31s/step)
+epoch 18/40  loss=0.0032  (25.0s, 0.31s/step)
+epoch 19/40  loss=0.0045  (23.0s, 0.29s/step)
+epoch 20/40  loss=0.0023  (24.9s, 0.31s/step)
+epoch 21/40  loss=0.0024  (25.4s, 0.32s/step)
+epoch 22/40  loss=0.0029  (22.7s, 0.28s/step)
+epoch 23/40  loss=0.0020  (24.3s, 0.30s/step)
+epoch 24/40  loss=0.0016  (28.3s, 0.35s/step)
+epoch 25/40  loss=0.0018  (27.5s, 0.34s/step)
+epoch 26/40  loss=0.0002  (24.4s, 0.30s/step)
+epoch 27/40  loss=0.0016  (28.3s, 0.35s/step)
+epoch 28/40  loss=0.0014  (25.6s, 0.32s/step)
+epoch 29/40  loss=0.0021  (22.2s, 0.28s/step)
+epoch 30/40  loss=0.0007  (25.7s, 0.32s/step)
+epoch 31/40  loss=0.0008  (25.2s, 0.32s/step)
+epoch 32/40  loss=0.0016  (25.6s, 0.32s/step)
+epoch 33/40  loss=0.0024  (22.5s, 0.28s/step)
+epoch 34/40  loss=0.0031  (25.8s, 0.32s/step)
+epoch 35/40  loss=0.0005  (25.7s, 0.32s/step)
+epoch 36/40  loss=0.0019  (22.7s, 0.28s/step)
+epoch 37/40  loss=0.0034  (25.3s, 0.32s/step)
+epoch 38/40  loss=0.0001  (27.3s, 0.34s/step)
+epoch 39/40  loss=0.0018  (28.5s, 0.36s/step)
+epoch 40/40  loss=0.0010  (24.8s, 0.31s/step)
+
+Saved fine-tuned weights to /home/dev/vikasit/identification/models/tiger_embedding_finetuned.weights.h5
+
+After fine-tune:
+evaluating on 321 held-out images across 107 identities
+rank-1 accuracy (leave-one-out within held-out set): 0.9751
+rank-2 accuracy (leave-one-out within held-out set): 0.9844
+rank-3 accuracy (leave-one-out within held-out set): 0.9907
+rank-4 accuracy (leave-one-out within held-out set): 0.9938
+rank-5 accuracy (leave-one-out within held-out set): 0.9938

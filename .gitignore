@@ -7,10 +7,8 @@
 # Datasets & Heavy Experiments (Kept locally on disk, excluded from Git)
 /ntlnp_raw/
 /final_data/
-/detection/
 /detectiontest/
 /detectiontrainval/
-/identification/
 /posetrain/
 /poseval/
 /reid_raw/
@@ -19,6 +17,14 @@
 /tygris-synthetic/
 /ui inspo/
 /frontend/
+
+# Internal raw datasets inside identification & detection
+/identification/data/
+/identification/api_log.txt
+/detection/data/images/
+/detection/data/labels/
+/detection/runs/predict/
+/detection/runs/tiger_yolov8n/weights/last.pt
 
 # Large Model Weights & Checkpoints (>100MB hard limit on GitHub)
 *.h5
@@ -34,6 +40,10 @@
 /resnet50_model.keras
 /resnet50_model_weights.weights.h5
 /efficientnetb3_notop.h5
+
+# Whitelist trained production models
+!/identification/models/tiger_embedding_finetuned.weights.h5
+!/detection/runs/tiger_yolov8n/weights/best.pt
 
 # Root duplicate PDF & notebook
 /1-s2.0-S1470160X25001566-main.pdf
@@ -88,7 +98,8 @@ desktop.ini
 *.log
 dev_log.txt
 
-# Screenshots & Dumps (Permit assets inside public/ and docs/)
+# Screenshots & Dumps (Permit assets inside public/, docs/, and detector training runs)
 *.png
 !frontend-v2/public/**
 !docs/**
+!detection/runs/tiger_yolov8n/*.png

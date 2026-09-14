@@ -1,0 +1,5 @@
+{
+  "auto_accept_threshold": 0.709,
+  "review_threshold": 0.699,
+  "used_finetuned_model": true
+}

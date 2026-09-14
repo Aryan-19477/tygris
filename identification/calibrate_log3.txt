@@ -1,0 +1,47 @@
+Loading embedding model... (fine-tuned)
+Computing embeddings for 1887 images (306 from 16 identities held out of training entirely)...
+
+Same-identity pairs: 51726
+  mean=0.935 std=0.050 p5=0.833 p50=0.949
+
+Different-identity pairs: 3507156
+  mean=0.289 std=0.128 p95=0.546 p99=0.709 max=0.996
+
+Threshold sweep (as auto-accept cutoff):
+thresh  TPR (same>=t)   FPR (diff>=t)   
+0.50    1.0000          0.0723            <- best J
+0.52    1.0000          0.0616            <- best J
+0.54    1.0000          0.0525            <- best J
+0.56    1.0000          0.0445            <- best J
+0.58    1.0000          0.0376            <- best J
+0.60    0.9999          0.0317            <- best J
+0.62    0.9996          0.0263            <- best J
+0.64    0.9994          0.0215            <- best J
+0.66    0.9992          0.0175            <- best J
+0.68    0.9990          0.0140            <- best J
+0.70    0.9986          0.0111            <- best J
+0.72    0.9979          0.0088            <- best J
+0.74    0.9964          0.0069            <- best J
+0.76    0.9932          0.0053          
+0.78    0.9877          0.0039          
+0.80    0.9782          0.0029          
+0.82    0.9625          0.0020          
+0.84    0.9412          0.0014          
+0.86    0.9118          0.0009          
+0.88    0.8703          0.0006          
+0.90    0.8027          0.0003          
+0.92    0.7061          0.0001          
+0.94    0.5702          0.0000          
+0.96    0.3996          0.0000          
+0.98    0.1516          0.0000          
+
+Suggested auto-accept threshold (max Youden's J): 0.74
+Threshold for ~1% false-accept rate on different identities: 0.709
+Suggested review-floor threshold (same-identity p5, clamped below auto-accept): 0.699
+
+gallery.py constants to update:
+  AUTO_ACCEPT_THRESHOLD = 0.71
+  REVIEW_THRESHOLD = 0.70
+
+Wrote thresholds to /home/dev/vikasit/identification/models/gallery_thresholds.json - gallery.py loads this automatically.
+ing XLA!  This line is logged at most once for the lifetime of the process.

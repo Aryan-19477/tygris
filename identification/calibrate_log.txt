@@ -1,0 +1,48 @@
+Loading embedding model... (fine-tuned)
+Computing embeddings for 1887 images (306 from 16 identities held out of training entirely)...
+
+Same-identity pairs: 51726
+  mean=0.878 std=0.241 p5=0.312 p50=0.994
+
+Different-identity pairs: 3507156
+  mean=0.809 std=0.298 p95=0.998 p99=0.999 max=1.000
+
+Threshold sweep (as auto-accept cutoff):
+thresh  TPR (same>=t)   FPR (diff>=t)   
+0.50    0.8429          0.7478            <- best J
+0.52    0.8381          0.7471          
+0.54    0.8334          0.7468          
+0.56    0.8314          0.7464          
+0.58    0.8293          0.7454          
+0.60    0.8256          0.7441          
+0.62    0.8209          0.7437          
+0.64    0.8195          0.7435          
+0.66    0.8192          0.7434          
+0.68    0.8192          0.7433          
+0.70    0.8191          0.7432          
+0.72    0.8190          0.7430          
+0.74    0.8189          0.7425          
+0.76    0.8186          0.7412          
+0.78    0.8178          0.7403          
+0.80    0.8158          0.7399          
+0.82    0.8124          0.7389          
+0.84    0.8093          0.7364          
+0.86    0.8065          0.7345          
+0.88    0.8039          0.7330          
+0.90    0.8012          0.7293          
+0.92    0.7954          0.7224          
+0.94    0.7868          0.7089          
+0.96    0.7688          0.6773          
+0.98    0.7188          0.5681            <- best J
+
+Suggested auto-accept threshold (max Youden's J): 0.98
+Threshold for ~1% false-accept rate on different identities: 0.999
+Suggested review-floor threshold (same-identity p5): 0.312
+
+gallery.py constants to update:
+  AUTO_ACCEPT_THRESHOLD = 1.00
+  REVIEW_THRESHOLD = 0.31
+
+Wrote thresholds to /home/dev/vikasit/identification/models/gallery_thresholds.json - gallery.py loads this automatically.
+86899203.418233  124465 cuda_dnn.cc:461] Loaded cuDNN version 92400
+I0000 00:00:1786899209.658295  124465 device_compiler.h:208] Compiled cluster using XLA!  This line is logged at most once for the lifetime of the process.
