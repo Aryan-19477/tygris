@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 import { Microphone } from "@phosphor-icons/react";
-import { detectLangFromTranscript, normalizeScribeLang, matchDemoAnswer } from "@/lib/voiceDemoScript";
+import { detectLangFromTranscript, normalizeScribeLang, type Lang } from "@/lib/voiceDemoScript";
+
+async function askAssistant(message: string, lang: Lang): Promise<string> {
+  const res = await fetch("/api/assistant", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, lang }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Assistant request failed");
+  return data.answer as string;
+}
 
 type Status = "idle" | "listening" | "thinking" | "speaking" | "error";
 
@@ -97,7 +108,15 @@ export default function VoiceAgentButton() {
     setHeard(`[${lang}] ${transcript}`);
     setStatus("thinking");
 
-    const answer = matchDemoAnswer(transcript, lang);
+    let answer: string;
+    try {
+      answer = await askAssistant(transcript, lang);
+    } catch (err) {
+      console.error("[voice] assistant request failed:", err);
+      setStatus("error");
+      setErrorMsg(err instanceof Error ? err.message : "Assistant couldn't answer that.");
+      return;
+    }
 
     try {
       const res = await fetch("/api/tts", {

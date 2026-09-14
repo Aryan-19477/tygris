@@ -11,6 +11,7 @@ import { StationHealthView } from "./views/StationHealthView";
 import { IdentifyView } from "./views/IdentifyView";
 import { SettingsView } from "./views/SettingsView";
 import { BlankFrameTrashView } from "./views/BlankFrameTrashView";
+import ChatAssistantPanel from "./ChatAssistantPanel";
 import { api, type Stats } from "@/lib/api";
 import { NavigationContext } from "@/lib/navigation-context";
 
@@ -102,6 +103,7 @@ export function AppShell() {
           </main>
         </div>
       </div>
+      <ChatAssistantPanel />
     </NavigationContext.Provider>
   );
 }
