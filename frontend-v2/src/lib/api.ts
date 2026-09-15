@@ -163,11 +163,71 @@ export interface GISStation {
   zone: string;
   sub_region?: string;
   habitat?: string;
+  elevation_m?: number;
   operational_status: string;
   uptime_ratio: number;
   nearest_water_km?: number;
   nearest_village_km?: number;
   trail_type?: string;
+}
+
+export interface StationTigerSeen {
+  tiger_id: string;
+  sex: string | null;
+  age_years: number | null;
+  life_stage: string | null;
+  territorial_status: string | null;
+  mcp_area_km2: number | null;
+  home_range_target_km2: number | null;
+  core_centroid_lat: number | null;
+  core_centroid_lon: number | null;
+  thumbnail: string | null;
+  num_captures_here: number;
+  last_seen_here: string | null;
+  flanks_seen: string[];
+  alert_levels: string[];
+}
+
+export interface StationSightingEvent {
+  event_id: string;
+  tiger_id: string;
+  timestamp: string | null;
+  camera_id: string;
+  latitude: number;
+  longitude: number;
+  zone: string;
+  habitat_type: string | null;
+  flank_side: string | null;
+  speed_kmh: number | null;
+  prey_density: number | null;
+  image_quality: string | null;
+  reid_confidence: number | null;
+  anomaly_class: string | null;
+  alert_level: string | null;
+  threat_reason: string | null;
+  acknowledged: number;
+  distance_to_nearest_village_km: number | null;
+  distance_to_nearest_water_km: number | null;
+  sex: string | null;
+  age_years: number | null;
+  life_stage: string | null;
+  mcp_area_km2: number | null;
+  thumbnail: string | null;
+}
+
+export interface StationDetailResponse {
+  station: GISStation;
+  stats: {
+    total_sightings: number;
+    unique_tigers: number;
+    first_seen: string | null;
+    last_seen: string | null;
+    avg_image_quality: number | null;
+    avg_prey_density: number | null;
+    alert_counts: { SAFE: number; CAUTION: number; DANGER: number };
+  };
+  tigers_seen: StationTigerSeen[];
+  recent_sightings: StationSightingEvent[];
 }
 
 export interface GISMapBundle {
@@ -371,6 +431,10 @@ export const api = {
 
   stations: () => request<{ stations: GISStation[] }>("/api/stations"),
 
+  stationDetail: (stationId: string) =>
+    request<StationDetailResponse>(`/api/stations/${encodeURIComponent(stationId)}`),
+
+
   alerts: (level?: string, limit = 50) => {
     const query = level ? `?level=${encodeURIComponent(level)}&limit=${limit}` : `?limit=${limit}`;
     return request<{ alerts: Sighting[]; total: number }>(`/api/alerts${query}`);
@@ -438,4 +502,239 @@ export const api = {
     request<{ processed: number; configured: boolean }>("/api/ranger/territory-check/run-pending", {
       method: "POST",
     }),
+
+  // ==========================================
+  // Prey Intelligence & Animal Identify Checker
+  // ==========================================
+  prey: {
+    identifyCheck: (file: File, options?: { camera_id?: string; timestamp?: string; record_observation?: boolean }) => {
+      const form = new FormData();
+      form.append("file", file);
+      if (options?.camera_id) form.append("camera_id", options.camera_id);
+      if (options?.timestamp) form.append("timestamp", options.timestamp);
+      if (options?.record_observation) form.append("record_observation", "true");
+      return request<PreyIdentifyCheckResult>("/api/prey/identify-check", {
+        method: "POST",
+        body: form,
+      });
+    },
+
+    getInsights: () => request<PreyInsightsResponse>("/api/prey/insights/summary"),
+
+    getObservations: (params?: { species?: string; camera_id?: string; status?: string; limit?: number; offset?: number }) => {
+      const sp = new URLSearchParams();
+      if (params?.species) sp.set("species", params.species);
+      if (params?.camera_id) sp.set("camera_id", params.camera_id);
+      if (params?.status) sp.set("status", params.status);
+      if (params?.limit) sp.set("limit", String(params.limit));
+      if (params?.offset) sp.set("offset", String(params.offset));
+      const qs = sp.toString();
+      return request<PreyObservation[]>(`/api/prey/observations${qs ? `?${qs}` : ""}`);
+    },
+
+    getReviewQueue: (limit = 50) => request<PreyReviewItem[]>(`/api/prey/review-queue?limit=${limit}`),
+
+    resolveReview: (
+      reviewId: string,
+      body: {
+        action: string;
+        verified_species?: string;
+        verified_sex?: string;
+        verified_age?: string;
+        verified_behaviour?: string;
+        notes?: string;
+      }
+    ) =>
+      request<{ success: boolean; review_id: string; action: string }>(
+        `/api/prey/review-queue/${reviewId}/resolve`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }
+      ),
+
+    getConfig: () => request<any>("/api/prey/config"),
+
+    updateConfig: (body: any) =>
+      request<{ success: boolean; config: any }>("/api/prey/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+
+    exportTrainingData: () => request<{ total_annotated_samples: number; samples: any[] }>("/api/prey/export-training-data"),
+  },
 };
+
+export interface PreyCandidate {
+  species: string;
+  score: number;
+}
+
+export interface PreyAnimal {
+  animal_index: number;
+  bbox: [number, number, number, number];
+  category: string;
+  species: string;
+  predicted_species: string;
+  species_confidence: number;
+  candidates: PreyCandidate[];
+  decision: "auto_accepted" | "needs_review" | "unknown";
+  decision_reason: string;
+  sex: string;
+  age_class: string;
+  behaviour: string;
+  behaviour_confidence: number;
+  count: number;
+}
+
+export interface PreyQuality {
+  quality_score: number;
+  usable: boolean;
+  laplacian_variance: number;
+  blur_score: number;
+  mean_brightness: number;
+  contrast: number;
+  lighting_condition: "day" | "night_ir" | "twilight";
+  issues: string[];
+  resolution: [number, number];
+}
+
+export interface PreyIdentifyCheckResult {
+  success: boolean;
+  overall_decision: "auto_accepted" | "needs_review" | "unknown";
+  total_animals_detected: number;
+  species_counts: Record<string, number>;
+  image_quality: PreyQuality;
+  animals: PreyAnimal[];
+  annotated_image: string;
+  saved_observation_ids?: string[];
+  metadata?: {
+    camera_id?: string | null;
+    timestamp?: string | null;
+    pipeline_version?: string;
+  };
+}
+
+export interface PreyObservation {
+  observation_id: string;
+  event_id?: string;
+  camera_id?: string;
+  timestamp: string;
+  latitude?: number;
+  longitude?: number;
+  species: string;
+  species_confidence: number;
+  bbox?: number[];
+  count: number;
+  sex: string;
+  age_class: string;
+  behaviour: string;
+  behaviour_confidence: number;
+  image_quality: number;
+  lighting_condition: string;
+  verification_status: "ai_verified" | "human_verified" | "human_corrected" | "needs_review" | "unknown" | "rejected";
+  image_path?: string;
+  notes?: string;
+}
+
+export interface PreyInsightsResponse {
+  summary: {
+    total_observations: number;
+    total_individuals: number;
+    species_richness: number;
+    active_stations: number;
+    auto_acceptance_rate: number;
+    pending_reviews: number;
+    dominant_prey: string;
+    status_breakdown: Record<string, number>;
+  };
+  relative_abundance: {
+    species_abundance: {
+      species: string;
+      event_count: number;
+      total_animals: number;
+      avg_confidence: number;
+      rai: number;
+      label: string;
+    }[];
+    top_stations_rai: {
+      camera_id: string;
+      total_events: number;
+      total_animals: number;
+      habitat: string;
+      zone: string;
+      latitude: number;
+      longitude: number;
+      station_rai: number;
+    }[];
+  };
+  spatial_association: {
+    hotspot_stations: {
+      camera_id: string;
+      latitude: number;
+      longitude: number;
+      habitat: string;
+      zone: string;
+      tiger_sightings: number;
+      prey_observations: number;
+      prey_individuals: number;
+      co_occurrence_index: number;
+    }[];
+  };
+  temporal_association: {
+    diel_curves: {
+      hour: string;
+      tiger: number;
+      chital: number;
+      sambar: number;
+      gaur: number;
+      wild_pig: number;
+    }[];
+    overlap_coefficient_tiger_chital: number;
+    tiger_peak_window: string;
+    chital_peak_window: string;
+  };
+  waterhole_intelligence: {
+    camera_id: string;
+    latitude: number;
+    longitude: number;
+    zone: string;
+    nearest_water_km: number;
+    prey_visits: number;
+    total_animals_drinking: number;
+    tiger_visits: number;
+    encounter_risk: string;
+    peak_visitation: string;
+  }[];
+  behaviour_and_anomalies: {
+    behaviour_distribution: {
+      behaviour: string;
+      count: number;
+      total_animals: number;
+    }[];
+    anomalies: {
+      station_id: string;
+      type: string;
+      severity: string;
+      detail: string;
+    }[];
+  };
+}
+
+export interface PreyReviewItem {
+  review_id: string;
+  observation_id: string;
+  image_path?: string;
+  predicted_species: string;
+  confidence: number;
+  quality_score: number;
+  reason: string;
+  status: string;
+  camera_id?: string;
+  timestamp?: string;
+  sex?: string;
+  age_class?: string;
+  behaviour?: string;
+}

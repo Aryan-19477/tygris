@@ -12,7 +12,11 @@ import { PairsView } from "./views/PairsView";
 import { IdentifyView } from "./views/IdentifyView";
 import { SettingsView } from "./views/SettingsView";
 import { BlankFrameTrashView } from "./views/BlankFrameTrashView";
+import { StationHealthView } from "./views/StationHealthView";
 import { Pass1ScreeningView } from "./views/Pass1ScreeningView";
+import { PreyCheckerView } from "./views/PreyCheckerView";
+import { PreyInsightsView } from "./views/PreyInsightsView";
+import { PreyReviewView } from "./views/PreyReviewView";
 import ChatAssistantPanel from "./ChatAssistantPanel";
 import { api, type Stats } from "@/lib/api";
 import { NavigationContext } from "@/lib/navigation-context";
@@ -21,6 +25,7 @@ import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 export type View =
   | "map"
   | "captures"
+  | "stations"
   | "catalogue"
   | "pairs"
   | "dossier"
@@ -28,6 +33,9 @@ export type View =
   | "identify"
   | "screening"
   | "trash"
+  | "preyChecker"
+  | "preyInsights"
+  | "preyReview"
   | "settings";
 
 export function AppShell() {
@@ -105,10 +113,14 @@ export function AppShell() {
                 onNavigateToMap={() => navigate("map")}
               />
             )}
+            {view === "stations" && <StationHealthView stats={stats} onOpenTiger={openTigerDossier} />}
             {view === "rangerReports" && <RangerReportsView stats={stats} />}
             {view === "identify" && <IdentifyView stats={stats} />}
             {view === "screening" && <Pass1ScreeningView stats={stats} />}
             {view === "trash" && <BlankFrameTrashView stats={stats} />}
+            {view === "preyChecker" && <PreyCheckerView />}
+            {view === "preyInsights" && <PreyInsightsView />}
+            {view === "preyReview" && <PreyReviewView />}
             {view === "settings" && <SettingsView />}
           </main>
         </div>

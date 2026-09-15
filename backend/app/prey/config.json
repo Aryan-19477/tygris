@@ -1,0 +1,58 @@
+{
+  "version": "1.0.0",
+  "pipeline_name": "Pench Multi-Species Prey Identification & Ecological Intelligence Pipeline",
+  "taxonomy": {
+    "P0": [
+      { "id": "tiger", "name": "Tiger", "scientific": "Panthera tigris", "category": "predator", "priority": "P0" },
+      { "id": "chital", "name": "Chital / Spotted Deer", "scientific": "Axis axis", "category": "prey", "priority": "P0" },
+      { "id": "sambar", "name": "Sambar", "scientific": "Rusa unicolor", "category": "prey", "priority": "P0" },
+      { "id": "wild_pig", "name": "Wild Pig / Wild Boar", "scientific": "Sus scrofa", "category": "prey", "priority": "P0" },
+      { "id": "gaur", "name": "Gaur / Indian Bison", "scientific": "Bos gaurus", "category": "prey", "priority": "P0" }
+    ],
+    "P1": [
+      { "id": "nilgai", "name": "Nilgai / Blue Bull", "scientific": "Boselaphus tragocamelus", "category": "prey", "priority": "P1" },
+      { "id": "barking_deer", "name": "Barking Deer / Muntjac", "scientific": "Muntiacus muntjak", "category": "prey", "priority": "P1" },
+      { "id": "chousingha", "name": "Four-horned Antelope / Chousingha", "scientific": "Tetracerus quadricornis", "category": "prey", "priority": "P1" },
+      { "id": "langur", "name": "Northern Plains Gray Langur", "scientific": "Semnopithecus entellus", "category": "prey", "priority": "P1" }
+    ],
+    "P2": [
+      { "id": "peafowl", "name": "Indian Peafowl", "scientific": "Pavo cristatus", "category": "prey", "priority": "P2" },
+      { "id": "jackal", "name": "Golden Jackal", "scientific": "Canis aureus", "category": "other", "priority": "P2" },
+      { "id": "sloth_bear", "name": "Sloth Bear", "scientific": "Melursus ursinus", "category": "other", "priority": "P2" },
+      { "id": "indian_hare", "name": "Indian Hare", "scientific": "Lepus nigricollis", "category": "prey", "priority": "P2" },
+      { "id": "other_mammal", "name": "Other Mammal", "scientific": "Mammalia", "category": "other", "priority": "P2" },
+      { "id": "other_bird", "name": "Other Bird", "scientific": "Aves", "category": "other", "priority": "P2" }
+    ]
+  },
+  "thresholds": {
+    "auto_accept_threshold": 0.85,
+    "review_floor": 0.50,
+    "min_quality_score": 0.35,
+    "detector_conf_threshold": 0.25,
+    "iou_threshold": 0.45
+  },
+  "quality_criteria": {
+    "min_laplacian_variance": 60.0,
+    "min_brightness": 25.0,
+    "max_brightness": 235.0,
+    "min_contrast": 20.0
+  },
+  "models": {
+    "detector_weights": "yolov8n-seg.pt",
+    "prey_classifier_weights": null,
+    "tiger_specialist_weights": "detection/runs/tiger_yolov8n/weights/best.pt"
+  },
+  "behaviour_taxonomy": [
+    "walking",
+    "running",
+    "feeding",
+    "resting",
+    "drinking",
+    "grazing",
+    "alert",
+    "fleeing",
+    "crossing",
+    "social",
+    "unknown"
+  ]
+}
