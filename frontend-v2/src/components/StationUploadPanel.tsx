@@ -3,6 +3,7 @@
 import { X } from "@phosphor-icons/react";
 import type { GISStation } from "@/lib/api";
 import { IdentifyCapture } from "./IdentifyCapture";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 /**
  * Station upload slide-over — a ranger uploads a fresh capture from the
@@ -17,6 +18,7 @@ export function StationUploadPanel({
   station: GISStation;
   onClose: () => void;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="fixed inset-0 z-2000 flex justify-end slideover-backdrop" onClick={onClose}>
       <div
@@ -26,7 +28,7 @@ export function StationUploadPanel({
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div>
             <div className="font-mono text-xs text-muted">{station.camera_id}</div>
-            <div className="text-base font-medium text-foreground">Upload a capture</div>
+            <div className="text-base font-medium text-foreground">{t("stationUpload.uploadCapture")}</div>
           </div>
           <button
             onClick={onClose}
@@ -38,15 +40,15 @@ export function StationUploadPanel({
 
         <div className="flex flex-col gap-2 border-b border-border px-5 py-3 font-mono text-xs text-muted">
           <div className="flex items-center justify-between">
-            <span>Zone</span>
+            <span>{t("stationUpload.zone")}</span>
             <span className="text-foreground">{station.zone}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span>Sub-region</span>
+            <span>{t("stationUpload.subRegion")}</span>
             <span className="text-foreground">{station.sub_region || "—"}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span>Status</span>
+            <span>{t("stationUpload.status")}</span>
             <span className={station.operational_status === "OPERATIONAL" ? "text-positive" : "text-danger"}>
               {station.operational_status}
             </span>

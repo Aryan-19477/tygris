@@ -1,0 +1,61 @@
+name: ranger_mobile
+description: Tygris Ranger — field operations companion for wildlife reserve rangers.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_riverpod: ^2.6.1
+
+  # Routing
+  go_router: ^14.6.2
+
+  # Maps
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Networking (talks to the same FastAPI backend frontend-v2 uses)
+  dio: ^5.7.0
+
+  # Location
+  geolocator: ^13.0.1
+  permission_handler: ^11.3.1
+
+  # Media
+  image_picker: ^1.1.2
+  camera: ^0.11.0+2
+  # XFile — used to read captured-photo bytes for Supabase Storage upload
+  # on both native (file path) and web (blob: URL), same as
+  # captured_photo_image_io/web.dart already do for *displaying* photos.
+  cross_file: ^0.3.4+2
+
+  # UI polish
+  google_fonts: ^6.2.1
+  intl: ^0.19.0
+
+  # Local persistence / offline (local-first — Supabase pushes real writes
+  # when configured, see lib/services/sync_queue_service.dart)
+  shared_preferences: ^2.3.3
+  connectivity_plus: ^6.1.0
+  path_provider: ^2.1.4
+
+  # Real backend sync (optional — app runs fully local/simulated without it)
+  supabase_flutter: ^2.6.0
+
+  # Identifiers
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

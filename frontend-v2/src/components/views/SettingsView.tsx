@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { CheckCircle, GearSix, XCircle, SignOut } from "@phosphor-icons/react";
 import { TopBar } from "@/components/TopBar";
 import { api } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function SettingsView() {
+  const { t } = useLanguage();
   const [online, setOnline] = useState<boolean | null>(null);
   const [modelStatus, setModelStatus] = useState<{ is_fully_trained: boolean; weights_loaded: Record<string, boolean> } | null>(null);
 
@@ -16,54 +18,54 @@ export function SettingsView() {
 
   return (
     <div>
-      <TopBar title="Settings" subtitle="Account, system status, and pipeline configuration" alertCount={0} />
+      <TopBar title={t("settings.title")} subtitle={t("settings.subtitle")} alertCount={0} />
       <div className="px-8 py-6 space-y-8">
         <section>
-          <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">Account</div>
+          <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">{t("settings.account")}</div>
           <div className="flex items-center justify-between rounded-2xl border border-border bg-surface p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft font-mono text-sm font-medium text-accent">
                 RO
               </div>
               <div>
-                <div className="text-sm font-medium text-foreground">Range Officer</div>
-                <div className="text-xs text-muted">Forest Department, Pench Tiger Reserve</div>
+                <div className="text-sm font-medium text-foreground">{t("nav.roleName")}</div>
+                <div className="text-xs text-muted">{t("nav.department")}, Pench Tiger Reserve</div>
               </div>
             </div>
             <button className="flex items-center gap-1.5 rounded-full border border-border-strong px-3.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface-sunken">
               <SignOut size={13} />
-              Log out
+              {t("settings.logout")}
             </button>
           </div>
         </section>
 
         <section>
-          <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">System Architecture</div>
+          <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">{t("settings.systemArchitecture")}</div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-border bg-surface p-5">
               <div className="mb-3 flex items-center gap-2">
                 <GearSix size={16} className="text-muted" />
-                <span className="font-mono text-[11px] uppercase tracking-wide text-muted">Identification API</span>
+                <span className="font-mono text-[11px] uppercase tracking-wide text-muted">{t("settings.identificationApi")}</span>
               </div>
               <div className="flex items-center gap-2">
                 {online === null ? (
-                  <span className="text-sm text-muted">Checking...</span>
+                  <span className="text-sm text-muted">{t("settings.checking")}</span>
                 ) : online ? (
                   <>
                     <CheckCircle size={16} weight="fill" className="text-positive" />
-                    <span className="text-sm font-medium text-foreground">Online</span>
+                    <span className="text-sm font-medium text-foreground">{t("settings.online")}</span>
                   </>
                 ) : (
                   <>
                     <XCircle size={16} weight="fill" className="text-danger" />
-                    <span className="text-sm font-medium text-foreground">Unreachable</span>
+                    <span className="text-sm font-medium text-foreground">{t("settings.unreachable")}</span>
                   </>
                 )}
               </div>
             </div>
 
             <div className="rounded-2xl border border-border bg-surface p-5">
-              <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">Model status</div>
+              <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">{t("settings.modelStatus")}</div>
               {modelStatus ? (
                 <>
                   <div className="flex items-center gap-2">
@@ -73,7 +75,7 @@ export function SettingsView() {
                       <XCircle size={16} weight="fill" className="text-danger" />
                     )}
                     <span className="text-sm font-medium text-foreground">
-                      {modelStatus.is_fully_trained ? "Fully trained" : "Untrained stage(s) present"}
+                      {modelStatus.is_fully_trained ? t("settings.fullyTrained") : t("settings.untrainedPresent")}
                     </span>
                   </div>
                   {!modelStatus.is_fully_trained && (
@@ -82,31 +84,31 @@ export function SettingsView() {
                         .filter(([, loaded]) => !loaded)
                         .map(([stage]) => stage)
                         .join(", ")}{" "}
-                      running on untrained weights.
+                      {t("settings.untrainedWeightsSuffix")}
                     </div>
                   )}
                 </>
               ) : (
-                <span className="text-sm text-muted">Checking...</span>
+                <span className="text-sm text-muted">{t("settings.checking")}</span>
               )}
             </div>
 
             <div className="rounded-2xl border border-border bg-surface p-5">
-              <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">Matching thresholds</div>
+              <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">{t("settings.matchingThresholds")}</div>
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted">Auto-accept</span>
+                  <span className="text-muted">{t("settings.autoAccept")}</span>
                   <span className="font-mono text-foreground">0.74 cosine</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted">Review floor</span>
+                  <span className="text-muted">{t("settings.reviewFloor")}</span>
                   <span className="font-mono text-foreground">0.55 cosine</span>
                 </div>
               </div>
             </div>
 
             <div className="rounded-2xl border border-border bg-surface p-5">
-              <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">Compute</div>
+              <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">{t("settings.compute")}</div>
               <div className="text-sm text-foreground">NVIDIA RTX 4070 Laptop GPU (WSL2 + CUDA)</div>
             </div>
           </div>

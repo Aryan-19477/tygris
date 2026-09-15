@@ -26,12 +26,12 @@ async def model_status():
     many real tiger identities it covers.
     """
     engine = TigerReIDEngine.get()
-    gallery_size = len(engine.gallery_ids)
+    gallery_size = len(set(engine.gallery_ids))
     return {
-        "is_fully_trained": gallery_size > 0,
-        "weights_loaded": {"embedding_model": True, "reference_gallery": gallery_size > 0},
+        "is_fully_trained": engine.real_model_loaded,
+        "weights_loaded": {"embedding_model": engine.real_model_loaded, "reference_gallery": gallery_size > 0},
         "gallery_size": gallery_size,
-        "checkpoints_dir": os.path.join(PROJECT_ROOT, "identification", "models"),
+        "checkpoints_dir": os.path.join(PROJECT_ROOT, "backend", "checkpoints"),
     }
 
 

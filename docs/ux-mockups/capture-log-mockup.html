@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Captures — Pench Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          background: '#F7F5F0', surface: '#FFFFFF', 'surface-sunken': '#F0EDE5',
+          foreground: '#1F2420', muted: '#6B7268', border: '#E2DFD6', 'border-strong': '#CBC6B7',
+          nav: '#FFFFFF', 'nav-foreground': '#1F2420', 'nav-muted': '#6B7268',
+          'nav-active': '#2F5233', 'nav-active-bg': '#E7EDE3', 'nav-border': '#CBC6B7',
+          accent: '#2F5233', 'accent-strong': '#24401F', 'accent-soft': 'rgba(47,82,51,.1)', 'accent-foreground': '#ffffff',
+          positive: '#2F5233', 'positive-soft': 'rgba(47,82,51,.1)',
+          caution: '#9C6B1E', 'caution-soft': 'rgba(156,107,30,.12)',
+          danger: '#A23B2C', 'danger-soft': 'rgba(162,59,44,.1)',
+          'priority-high': '#A23B2C', 'priority-medium': '#9C6B1E', 'priority-low': '#2F5233',
+        },
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          serif: ['"Source Serif 4"', 'Georgia', 'serif'],
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'Menlo', 'monospace'],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body{ background:#F7F5F0; font-feature-settings:"cv02","cv03","cv04","cv11"; -webkit-font-smoothing:antialiased; }
+  ::-webkit-scrollbar{ width:6px; height:6px; }
+  ::-webkit-scrollbar-thumb{ background:#CBC6B7; border-radius:3px; }
+  @keyframes fadeUp{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:translateY(0);} }
+  @keyframes fadeIn{ from{ opacity:0;} to{ opacity:1;} }
+  .stagger{ opacity:0; animation:fadeUp .35s cubic-bezier(.16,1,.3,1) forwards; }
+  .detail-enter{ animation:fadeIn .2s ease forwards; }
+  .navgroup{ max-height:0; overflow:hidden; transition:max-height .22s ease; }
+  .navgroup.open{ max-height:260px; }
+  .chev{ transition:transform .18s ease; }
+  .chev.open{ transform:rotate(180deg); }
+  .rail{ transition:width .18s ease; }
+  .dot-pulse{ box-shadow:0 0 0 0 currentColor; animation:pulse 2s infinite; }
+  @keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(162,59,44,.35);} 70%{ box-shadow:0 0 0 5px rgba(162,59,44,0);} 100%{ box-shadow:0 0 0 0 rgba(162,59,44,0);} }
+</style>
+</head>
+<body class="text-foreground antialiased">
+
+<div class="flex h-dvh overflow-hidden bg-background">
+
+  <!-- ============ SIDEBAR — nested, collapsible groups ============ -->
+  <aside id="sidebar" class="rail relative flex h-dvh w-72 shrink-0 flex-col border-r border-nav-border bg-nav text-nav-foreground">
+    <button id="railToggle" class="absolute -right-3 top-8 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-nav-border bg-surface text-muted shadow-sm hover:text-foreground">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+
+    <div class="flex items-center gap-3 px-5 py-6">
+      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-foreground">
+        <svg viewBox="0 0 40 40" class="h-6 w-6" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 27V13h5.6c2.9 0 4.9 1.8 4.9 4.4 0 2.6-2 4.4-4.9 4.4H17v5.2h-3Zm3-7.6h2.3c1.3 0 2.1-.7 2.1-2s-.8-2-2.1-2H17v4Z" fill="#F7F5F0" />
+        </svg>
+      </div>
+      <div class="min-w-0 label-fade">
+        <div class="font-mono text-[13px] font-semibold uppercase leading-tight tracking-wider text-nav-foreground">Pench Intelligence</div>
+        <div class="mt-0.5 text-[11px] text-nav-muted">Forest Department</div>
+      </div>
+    </div>
+
+    <nav class="flex-1 space-y-1 overflow-y-auto px-3 pt-2" id="navList"></nav>
+
+    <div class="border-t border-nav-border px-3 py-4">
+      <div class="flex items-center gap-3 rounded-lg px-2 py-2">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-nav-active-bg font-mono text-xs font-medium text-nav-active">RO</div>
+        <div class="min-w-0 label-fade">
+          <div class="truncate text-[13px] font-medium text-nav-foreground">Range Officer</div>
+          <div class="truncate text-[11px] text-nav-muted">Forest Department</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+    <main class="flex-1 overflow-y-auto">
+      <div>
+        <div class="flex flex-wrap items-start justify-between gap-4 border-b border-border px-5 py-5 sm:gap-6 sm:px-8 sm:py-6">
+          <div>
+            <h1 class="font-serif text-2xl font-medium tracking-tight text-foreground sm:text-3xl">Captures</h1>
+            <p class="mt-1 text-sm text-muted sm:text-[15px]">Every camera trigger, its station's health, and its identification — in one stream, not three</p>
+          </div>
+          <div class="flex shrink-0 items-center gap-3 sm:gap-4">
+            <div class="relative hidden sm:block">
+              <svg width="15" height="15" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input placeholder="Search event or camera ID…" class="w-56 rounded-full border border-border bg-surface py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none" />
+            </div>
+            <button class="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-muted transition-colors hover:border-border-strong hover:text-foreground">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+              <span class="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-priority-high px-1 font-mono text-[10px] font-medium text-white">14</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="px-5 py-6 sm:px-8">
+
+          <!-- top stat row: capture status + network health, side by side, one glance -->
+          <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4" id="statRow"></div>
+
+          <!-- offline-station banner, only when relevant — pulled straight out of the old StationHealthView -->
+          <div id="offlineBanner"></div>
+
+          <!-- station strip: click a camera to filter the log AND see its health, one place -->
+          <div class="mb-5">
+            <div class="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-muted">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="15" height="12" rx="2"/><path d="m17 10 5-3v10l-5-3"/></svg>
+              Camera network
+            </div>
+            <div class="flex gap-2 overflow-x-auto pb-1" id="stationStrip"></div>
+          </div>
+
+          <div id="stationCard" class="mb-5"></div>
+
+          <div class="mb-5 flex flex-wrap items-center gap-2" id="filterRow"></div>
+
+          <div class="grid grid-cols-1 gap-0 lg:grid-cols-[1fr_420px]">
+            <div class="border-border pr-0 lg:border-r lg:pr-8">
+              <div class="space-y-3" id="eventList"></div>
+            </div>
+            <div class="px-0 pt-6 lg:px-6 lg:pt-0">
+              <div id="detailPane"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   STATIONS — the data StationHealthView used to own alone.
+   Now every part of the Captures workflow reads from this.
+   ============================================================ */
+const STATIONS = {
+  'CAM-01': { zone:'Zone B — Buffer', region:'Karmajhiri', status:'OPERATIONAL', battery:82, trapNights:340, individuals:9 },
+  'CAM-03': { zone:'Zone A — Core',   region:'Alikatta',   status:'OPERATIONAL', battery:91, trapNights:412, individuals:14 },
+  'CAM-05': { zone:'Zone A — Core',   region:'Alikatta',   status:'LOW_BATTERY', battery:19, trapNights:388, individuals:7 },
+  'CAM-07': { zone:'Zone C — Corridor', region:'Kalapahad', status:'OPERATIONAL', battery:76, trapNights:401, individuals:11 },
+  'CAM-09': { zone:'Zone C — Corridor', region:'Kalapahad', status:'OFFLINE',    battery:null, trapNights:290, individuals:5 },
+  'CAM-11': { zone:'Zone C — Buffer', region:'Turia',     status:'OPERATIONAL', battery:58, trapNights:355, individuals:8 },
+};
+const STATION_STATE = {
+  OPERATIONAL: { dot:'bg-positive', text:'text-positive', bg:'bg-positive-soft', label:'Operational' },
+  LOW_BATTERY: { dot:'bg-caution', text:'text-caution', bg:'bg-caution-soft', label:'Low battery' },
+  OFFLINE:     { dot:'bg-danger', text:'text-danger', bg:'bg-danger-soft', label:'Not reporting' },
+};
+
+/* ============================================================
+   NESTED SIDEBAR — grouped, collapsible, with drill-in state,
+   same interaction language as the reference nav (expand a
+   group, see counts, see which child is active).
+   ============================================================ */
+const ICONS = {
+  map: '<path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3Z"/><path d="M9 3v15M15 6v15"/>',
+  identify: '<path d="M2 12a10 10 0 1 1 20 0 10 10 0 0 1-20 0Z"/><path d="M12 8v4l3 2"/>',
+  captures: '<rect x="6" y="6" width="14" height="14" rx="2"/><path d="M2 15V4a1 1 0 0 1 1-1h11"/><path d="M9 11l2.2 2.5L14 10l3 4"/>',
+  population: '<path d="M11 20a7 7 0 0 0-7-7 3 3 0 0 0 3 3M13 20a7 7 0 0 1 7-7 3 3 0 0 1-3 3M12 4c-1.7 0-3 1.6-3 3.5S10.3 11 12 11s3-1.6 3-3.5S13.7 4 12 4Z"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1Z"/>',
+};
+
+const NAV = [
+  { id:'map', label:'Reserve Map', kind:'single' },
+  { id:'identify', label:'Identify', kind:'single' },
+  { id:'captures', label:'Captures', kind:'group', open:true, children:[
+      { id:'all', label:'All events' },
+      { id:'review', label:'Needs review', badge:{ n:14, tone:'caution' } },
+      { id:'stations', label:'By station', active:true },
+      { id:'screening', label:'Pass 1 screening' },
+      { id:'trash', label:'Blank frame trash' },
+    ]},
+  { id:'population', label:'Population', kind:'group', open:false, children:[
+      { id:'catalogue', label:'Tiger catalogue' },
+      { id:'pairs', label:'Pairs & family groups', badge:{ text:'New', tone:'accent' } },
+      { id:'ranger', label:'Ranger reports' },
+    ]},
+  { id:'settings', label:'Settings', kind:'single' },
+];
+
+function badgeHtml(b){
+  if(!b) return '';
+  if(b.text){
+    return `<span class="rounded-full bg-nav-active px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-nav">${b.text}</span>`;
+  }
+  const tones = { caution:'bg-priority-high text-white', accent:'bg-nav-active-bg text-nav-active' };
+  return `<span class="flex h-5 min-w-5 items-center justify-center rounded-full px-1 font-mono text-[11px] font-medium ${tones[b.tone]}">${b.n}</span>`;
+}
+
+function renderNav(){
+  const el = document.getElementById('navList');
+  el.innerHTML = NAV.map(item => {
+    if(item.kind === 'single'){
+      return `
+      <button class="flex w-full items-center gap-3 rounded-xl border-2 border-transparent px-3 py-2.5 text-left text-sm font-semibold text-nav-muted transition-all hover:border-nav-border hover:bg-nav-active-bg/50 hover:text-nav-foreground">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[item.id]}</svg>
+        <span class="label-fade flex-1">${item.label}</span>
+      </button>`;
+    }
+    const hasActiveChild = item.children.some(c => c.active);
+    return `
+    <div>
+      <button data-group="${item.id}" class="navgrouptoggle flex w-full items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left text-sm font-semibold transition-all ${
+        hasActiveChild ? 'border-transparent bg-nav-active-bg/60 text-nav-foreground' : 'border-transparent text-nav-muted hover:bg-nav-active-bg/50 hover:text-nav-foreground'
+      }">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[item.id]}</svg>
+        <span class="label-fade flex-1">${item.label}</span>
+        <svg class="chev ${item.open ? 'open' : ''}" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="navgroup ${item.open ? 'open' : ''}" data-groupbody="${item.id}">
+        <div class="relative ml-[22px] mt-1 space-y-0.5 border-l border-nav-border pl-4">
+          ${item.children.map(c => `
+            <button data-child="${item.id}.${c.id}" class="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors ${
+              c.active ? 'bg-nav-active-bg font-semibold text-nav-active' : 'text-nav-muted hover:bg-nav-active-bg/50 hover:text-nav-foreground'
+            }">
+              <span class="label-fade flex-1 truncate">${c.label}</span>
+              ${badgeHtml(c.badge)}
+              ${c.active ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>` : ''}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('.navgrouptoggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.group;
+      const item = NAV.find(n => n.id === id);
+      item.open = !item.open;
+      renderNav();
+    });
+  });
+  el.querySelectorAll('[data-child]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const [, childId] = btn.dataset.child.split('.');
+      if(childId === 'review'){ activeFilter = 'review'; }
+      else if(childId === 'all'){ activeFilter = 'all'; }
+      else if(childId === 'stations'){ /* already the merged view — no-op */ }
+      NAV.find(n=>n.id==='captures').children.forEach(c => c.active = c.id === childId || (childId==='all' && c.id==='all'));
+      renderNav(); renderAll();
+    });
+  });
+}
+renderNav();
+
+/* rail collapse toggle */
+const sidebar = document.getElementById('sidebar');
+const railToggle = document.getElementById('railToggle');
+let collapsed = false;
+railToggle.addEventListener('click', () => {
+  collapsed = !collapsed;
+  sidebar.style.width = collapsed ? '76px' : '18rem';
+  document.querySelectorAll('.label-fade').forEach(el => el.style.display = collapsed ? 'none' : '');
+  document.querySelectorAll('.navgroup').forEach(el => el.classList.remove('open'));
+  railToggle.querySelector('svg').style.transform = collapsed ? 'rotate(180deg)' : '';
+});
+
+/* ============================================================
+   CAPTURE EVENTS — now carrying a station reference so the
+   list, the detail pane, and the network strip all agree.
+   ============================================================ */
+function tile(seed, hue){
+  const c = document.createElement('canvas'); c.width=160; c.height=160;
+  const ctx = c.getContext('2d'); let s = seed;
+  const rnd = () => { s = (s*1103515245+12345) & 0x7fffffff; return s/0x7fffffff; };
+  ctx.fillStyle = `hsl(${hue} 20% ${16+rnd()*10}%)`; ctx.fillRect(0,0,160,160);
+  for(let i=0;i<7;i++){
+    ctx.strokeStyle = `hsla(${hue+(rnd()*20-10)} 14% 7% / ${.4+rnd()*.3})`;
+    ctx.lineWidth = 4+rnd()*6;
+    ctx.beginPath();
+    const x = rnd()*160;
+    ctx.moveTo(x,0); ctx.quadraticCurveTo(x+(rnd()*40-20),80,x+(rnd()*30-15),160);
+    ctx.stroke();
+  }
+  return c.toDataURL();
+}
+
+const STATUS = {
+  matched: { label:'Auto-matched', text:'text-positive', bg:'bg-positive-soft', railBorder:'border-l-positive' },
+  review:  { label:'Needs review', text:'text-caution', bg:'bg-caution-soft', railBorder:'border-l-caution' },
+  new:     { label:'Unidentified', text:'text-accent', bg:'bg-accent-soft', railBorder:'border-l-accent' },
+  reject:  { label:'Blank / no animal', text:'text-muted', bg:'bg-surface-sunken', railBorder:'border-l-border-strong' },
+};
+
+const EVENTS = [
+  { id:'EVT-0512', cam:'CAM-07', start:'06:14:02', end:'06:14:14', dur:'12s window', frames:6, type:'photo', status:'matched', candidates:[{id:'T045_F',sim:.91},{id:'T098_F',sim:.44},{id:'T012_M',sim:.31}], hue:104 },
+  { id:'EVT-0511', cam:'CAM-03', start:'05:58:40', end:null, dur:'single frame', frames:1, type:'photo', status:'review', candidates:[{id:'T012_M',sim:.76},{id:'T045_F',sim:.69},{id:'T077_M',sim:.52}], hue:82 },
+  { id:'EVT-0510', cam:'CAM-11', start:'05:41:10', end:'05:41:28', dur:'18s window', frames:9, type:'video', status:'new', candidates:[{id:'T098_F',sim:.38},{id:'T045_F',sim:.29},{id:'T134_M',sim:.22}], hue:58 },
+  { id:'EVT-0509', cam:'CAM-01', start:'04:22:55', end:'04:23:01', dur:'6s window', frames:4, type:'photo', status:'matched', candidates:[{id:'T134_M',sim:.88},{id:'T077_M',sim:.41}], hue:132 },
+  { id:'EVT-0508', cam:'CAM-09', start:'03:50:12', end:null, dur:'single frame', frames:1, type:'photo', status:'reject', candidates:[], hue:38 },
+  { id:'EVT-0507', cam:'CAM-07', start:'02:17:33', end:'02:17:45', dur:'12s window', frames:5, type:'photo', status:'matched', candidates:[{id:'T098_F',sim:.94},{id:'T045_F',sim:.37}], hue:112 },
+  { id:'EVT-0506', cam:'CAM-05', start:'01:44:19', end:'01:44:31', dur:'12s window', frames:7, type:'video', status:'review', candidates:[{id:'T077_M',sim:.79},{id:'T134_M',sim:.71},{id:'T012_M',sim:.58}], hue:70 },
+  { id:'EVT-0505', cam:'CAM-09', start:'23:58:02', end:null, dur:'single frame', frames:1, type:'photo', status:'reject', candidates:[], hue:34 },
+];
+
+let activeFilter = 'all';
+let activeStation = null;
+let activeId = EVENTS[0].id;
+
+function visibleEvents(){
+  return EVENTS.filter(e =>
+    (activeFilter==='all' || e.status===activeFilter) &&
+    (!activeStation || e.cam===activeStation)
+  );
+}
+
+function renderStatRow(){
+  const review = EVENTS.filter(e=>e.status==='review').length;
+  const matched = EVENTS.filter(e=>e.status==='matched').length;
+  const offline = Object.values(STATIONS).filter(s => s.status !== 'OPERATIONAL').length;
+  const uptime = Math.round((Object.keys(STATIONS).length - offline) / Object.keys(STATIONS).length * 100);
+  const blocks = [
+    { label:'Needs review', value:review, tone:'text-caution' },
+    { label:'Auto-matched', value:matched, tone:'text-positive' },
+    { label:'Total events', value:EVENTS.length, tone:'text-foreground' },
+    { label:'Network uptime', value:uptime+'%', tone: offline>0 ? 'text-caution' : 'text-positive', hint: offline>0 ? `${offline} camera${offline>1?'s':''} need attention` : 'All cameras reporting' },
+  ];
+  document.getElementById('statRow').innerHTML = blocks.map(b => `
+    <div class="relative overflow-hidden rounded-xl border ${b.hint && offline>0 && b.label==='Network uptime' ? 'border-caution/40 bg-caution-soft' : 'border-border bg-surface'} p-4">
+      <div class="font-mono text-[11px] uppercase tracking-wide text-muted">${b.label}</div>
+      <div class="mt-1.5 font-serif text-3xl font-medium tabular-nums tracking-tight ${b.tone}">${b.value}</div>
+      ${b.hint ? `<div class="mt-0.5 text-[11px] text-muted">${b.hint}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderOfflineBanner(){
+  const offline = Object.entries(STATIONS).filter(([,s]) => s.status === 'OFFLINE');
+  const box = document.getElementById('offlineBanner');
+  if(offline.length === 0){ box.innerHTML = ''; return; }
+  box.innerHTML = `
+    <div class="mb-5 rounded-xl border border-danger/30 bg-danger-soft p-4">
+      <div class="mb-2 flex items-center gap-2 text-danger">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1 21h22L12 2Zm0 6a1.2 1.2 0 0 1 1.2 1.2v5a1.2 1.2 0 1 1-2.4 0v-5A1.2 1.2 0 0 1 12 8Zm0 9.6a1.4 1.4 0 1 1 0-2.8 1.4 1.4 0 0 1 0 2.8Z"/></svg>
+        <span class="text-sm font-medium">${offline.length} camera${offline.length>1?'s':''} not reporting — captures from ${offline.length>1?'them':'it'} may be delayed</span>
+      </div>
+      <div class="flex flex-wrap gap-1.5">
+        ${offline.map(([id]) => `<button data-station="${id}" class="stationChip rounded-full bg-surface px-2.5 py-1 font-mono text-xs text-foreground ring-1 ring-danger/15 hover:ring-danger/40">${id}</button>`).join('')}
+      </div>
+    </div>`;
+  box.querySelectorAll('.stationChip').forEach(b => b.addEventListener('click', () => { activeStation = b.dataset.station; renderAll(); }));
+}
+
+function renderStationStrip(){
+  const strip = document.getElementById('stationStrip');
+  strip.innerHTML = Object.entries(STATIONS).map(([id, s]) => {
+    const st = STATION_STATE[s.status];
+    const active = activeStation === id;
+    return `
+    <button data-station="${id}" class="stationChip flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-left transition-colors ${
+      active ? 'border-accent-strong bg-accent text-accent-foreground' : 'border-border bg-surface hover:border-border-strong'
+    }">
+      <span class="relative flex h-2 w-2 shrink-0 rounded-full ${st.dot} ${s.status==='OFFLINE' ? 'dot-pulse text-danger' : ''}"></span>
+      <span class="font-mono text-xs font-medium ${active ? 'text-accent-foreground' : 'text-foreground'}">${id}</span>
+      ${s.status !== 'OPERATIONAL' ? `<span class="font-mono text-[10px] ${active ? 'text-accent-foreground/80' : 'text-muted'}">${st.label}</span>` : ''}
+    </button>`;
+  }).join('');
+  strip.querySelectorAll('.stationChip').forEach(b => b.addEventListener('click', () => {
+    activeStation = activeStation === b.dataset.station ? null : b.dataset.station;
+    renderAll();
+  }));
+}
+
+function renderStationCard(){
+  const box = document.getElementById('stationCard');
+  if(!activeStation){ box.innerHTML=''; return; }
+  const s = STATIONS[activeStation];
+  const st = STATION_STATE[s.status];
+  box.innerHTML = `
+    <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-surface p-4">
+      <div class="flex items-center gap-4">
+        <div class="flex h-11 w-11 items-center justify-center rounded-full ${st.bg} ${st.text}">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="15" height="12" rx="2"/><path d="m17 10 5-3v10l-5-3"/></svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-mono text-base font-semibold text-foreground">${activeStation}</span>
+            <span class="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${st.bg} ${st.text}">${st.label}</span>
+          </div>
+          <div class="mt-0.5 text-xs text-muted">${s.zone} — ${s.region}</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-5 font-mono text-xs text-muted">
+        <span>${s.battery !== null ? s.battery+'% battery' : 'battery unknown'}</span>
+        <span>${s.trapNights} trap-nights</span>
+        <span>${s.individuals} individuals seen here</span>
+      </div>
+      <button class="text-xs font-medium text-muted hover:text-foreground" onclick="activeStation=null;renderAll()">Clear filter ✕</button>
+    </div>`;
+}
+
+function renderFilters(){
+  const FILTERS = [
+    { id:'all', label:'All events' },
+    { id:'review', label:'Needs review' },
+    { id:'matched', label:'Auto-matched' },
+    { id:'new', label:'Unidentified' },
+    { id:'reject', label:'Blank / rejected' },
+  ];
+  document.getElementById('filterRow').innerHTML = FILTERS.map(f => {
+    const n = f.id==='all' ? EVENTS.filter(e=>!activeStation||e.cam===activeStation).length : EVENTS.filter(e=>e.status===f.id && (!activeStation||e.cam===activeStation)).length;
+    return `
+    <button data-f="${f.id}" class="rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+      activeFilter===f.id ? 'border-accent-strong bg-accent text-accent-foreground' : 'border-border text-muted hover:border-border-strong hover:text-foreground'
+    }">${f.label} <span class="font-mono text-xs ${activeFilter===f.id ? 'opacity-80' : 'opacity-60'}">${n}</span></button>`;
+  }).join('');
+  document.querySelectorAll('#filterRow button').forEach(b => b.addEventListener('click', () => { activeFilter=b.dataset.f; renderAll(); }));
+}
+
+function thumbHtml(ev){
+  if(ev.frames === 1){
+    return `<div class="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-surface-sunken"><img src="${tile(ev.id.length*13, ev.hue)}" class="h-full w-full object-cover" /></div>`;
+  }
+  const imgs = [0,1,2].map(i => `<img src="${tile(ev.id.length*13+i*7, ev.hue)}" class="absolute h-[46px] w-[46px] rounded-lg border-2 border-surface object-cover shadow-sm" style="top:${i*3}px;left:${i*3}px;z-index:${3-i};filter:brightness(${1-i*.06})" />`).join('');
+  const badge = ev.type==='video'
+    ? `<span class="absolute -bottom-0.5 -right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 border-surface bg-accent text-white"><svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>`
+    : `<span class="absolute -bottom-0.5 -right-1.5 z-10 rounded-full border-2 border-surface bg-foreground px-1.5 font-mono text-[10px] font-semibold text-white">×${ev.frames}</span>`;
+  return `<div class="relative h-14 w-14 shrink-0">${imgs}${badge}</div>`;
+}
+
+function renderList(){
+  const list = document.getElementById('eventList');
+  const items = visibleEvents();
+  if(items.length === 0){
+    list.innerHTML = `<div class="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-border-strong text-center">
+      <p class="text-[15px] font-medium text-foreground">No events match this filter</p>
+      <p class="mt-1 text-sm text-muted">Try a different status or clear the station filter</p>
+    </div>`;
+    return;
+  }
+  list.innerHTML = items.map((ev,i) => {
+    const s = STATUS[ev.status];
+    const st = STATION_STATE[STATIONS[ev.cam].status];
+    const time = ev.end ? `${ev.start} – ${ev.end.slice(-5)}` : ev.start;
+    return `
+    <button data-id="${ev.id}" style="animation-delay:${Math.min(i*30,300)}ms" class="stagger flex w-full items-center gap-4 rounded-xl border-l-4 bg-surface p-4 text-left transition-colors ${
+      activeId===ev.id ? `${s.railBorder} ${s.bg}` : 'border-l-border-strong hover:border-l-border'
+    }">
+      ${thumbHtml(ev)}
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2">
+          <span class="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide ${s.bg} ${s.text}">${s.label}</span>
+          <span class="flex items-center gap-1.5 truncate text-sm font-medium text-foreground">
+            <span class="h-1.5 w-1.5 shrink-0 rounded-full ${st.dot}"></span>
+            ${ev.cam} · ${STATIONS[ev.cam].zone.split('—')[0].trim()}
+          </span>
+        </div>
+        <p class="mt-1 truncate text-xs text-muted">${time} · ${ev.dur}${ev.frames>1 ? ` · ${ev.frames} ${ev.type==='video'?'frames':'shots'} grouped` : ''}</p>
+      </div>
+    </button>`;
+  }).join('');
+  list.querySelectorAll('button[data-id]').forEach(b => b.addEventListener('click', () => { activeId=b.dataset.id; renderDetail(); renderList(); }));
+}
+
+function renderDetail(){
+  const pane = document.getElementById('detailPane');
+  const ev = visibleEvents().find(e => e.id === activeId) || visibleEvents()[0];
+  if(!ev){ pane.innerHTML = `<div class="flex min-h-75 flex-col items-center justify-center rounded-2xl border border-dashed border-border-strong text-center text-muted"><p class="mt-3 text-sm">Select an event to review</p></div>`; return; }
+  activeId = ev.id;
+  const s = STATUS[ev.status];
+  const station = STATIONS[ev.cam];
+  const st = STATION_STATE[station.status];
+  const frames = Array.from({length: ev.frames}, (_,i) => tile(ev.id.length*13+i*11, ev.hue));
+
+  const bannerText = ev.status==='matched'
+    ? `<b>Auto-matched to ${ev.candidates[0].id}</b> — ${Math.round(ev.candidates[0].sim*100)}% similarity, above the 82% auto-accept floor.`
+    : ev.status==='review'
+      ? `<b>Below auto-accept threshold</b> — top candidate ${ev.candidates[0].id} at ${Math.round(ev.candidates[0].sim*100)}%. Needs a human decision.`
+      : ev.status==='new'
+        ? `<b>No confident candidate</b> — best match only ${Math.round(ev.candidates[0].sim*100)}%. Likely an unenrolled individual.`
+        : `<b>No stripe pattern detected</b> — frame appears blank or non-tiger.`;
+
+  const candidatesHtml = ev.candidates.length ? `
+    <div class="mt-5 mb-2 font-mono text-[11px] uppercase tracking-wide text-muted">Closest candidates</div>
+    <div class="space-y-2">
+      ${ev.candidates.slice(0,4).map((c,i) => `
+        <button class="group flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors hover:border-positive/40 hover:bg-positive-soft ${i===0 ? 'border-border-strong bg-surface-sunken' : 'border-border'}">
+          <span class="font-mono text-sm font-medium text-foreground w-16">${c.id}</span>
+          <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken"><div class="h-full rounded-full bg-accent" style="width:${c.sim*100}%"></div></div>
+          <span class="w-10 text-right font-mono text-xs text-muted">${Math.round(c.sim*100)}%</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-positive opacity-0 transition-opacity group-hover:opacity-100"><path d="M20 6 9 17l-5-5"/></svg>
+        </button>
+      `).join('')}
+    </div>
+    <button class="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/></svg>
+      None of these — enroll as new individual
+    </button>
+  ` : `
+    <div class="mt-5 rounded-xl border border-border bg-surface-sunken p-3 text-xs text-muted">No candidates cleared the review floor. This event will drop into Blank Frame Trash unless restored.</div>
+    <button class="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-surface border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-border-strong">Restore to review queue</button>
+  `;
+
+  pane.innerHTML = `
+    <div class="detail-enter overflow-hidden rounded-2xl border border-border bg-surface">
+      <div class="flex items-center justify-between border-b border-border px-5 py-4">
+        <span class="rounded-full px-2.5 py-1 font-mono text-[11px] font-semibold uppercase tracking-wide ${s.bg} ${s.text}">${s.label}</span>
+        <span class="font-mono text-[11px] text-muted">${ev.id}</span>
+      </div>
+
+      <div class="flex gap-2 overflow-x-auto bg-surface-sunken/40 p-3">
+        ${frames.map((src,i) => `<img data-i="${i}" src="${src}" class="film h-16 w-16 shrink-0 cursor-pointer rounded-lg object-cover ring-2 ${i===0 ? 'ring-accent' : 'ring-transparent opacity-70 hover:opacity-100'}" />`).join('')}
+      </div>
+
+      <img id="mainPreview" src="${frames[0]}" alt="" class="aspect-video w-full bg-surface-sunken object-cover" />
+
+      <div class="p-5">
+        <h3 class="text-base font-semibold text-foreground">${ev.cam} · ${station.zone} — ${station.region}</h3>
+        <p class="mt-1 text-sm text-muted">${bannerText}</p>
+
+        <div class="mt-4 flex flex-col gap-2 font-mono text-xs text-muted">
+          <div class="flex items-center gap-2"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><span>${ev.end ? ev.start+' – '+ev.end.slice(-5) : ev.start} · ${ev.dur}${ev.frames>1 ? ` · ${ev.frames} ${ev.type==='video'?'frames':'shots'} auto-grouped by camera + trigger window` : ''}</span></div>
+        </div>
+
+        <!-- station health, inline, not a separate page -->
+        <div class="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-surface-sunken p-3">
+          <div class="flex items-center gap-2.5">
+            <span class="h-2 w-2 rounded-full ${st.dot}"></span>
+            <span class="text-xs text-foreground"><b class="font-medium">${station.status==='OPERATIONAL' ? 'Camera healthy' : st.label}</b> · ${station.battery !== null ? station.battery+'% battery' : 'battery unknown'} · ${station.trapNights} trap-nights</span>
+          </div>
+          <button onclick="activeStation='${ev.cam}';renderAll()" class="shrink-0 text-xs font-medium text-accent hover:underline">Filter to this camera →</button>
+        </div>
+
+        ${candidatesHtml}
+      </div>
+    </div>
+  `;
+  pane.querySelectorAll('.film').forEach(img => img.addEventListener('click', () => {
+    pane.querySelectorAll('.film').forEach(x => { x.classList.remove('ring-accent'); x.classList.add('ring-transparent','opacity-70'); });
+    img.classList.remove('ring-transparent','opacity-70');
+    img.classList.add('ring-accent');
+    document.getElementById('mainPreview').src = img.src;
+  }));
+}
+
+function renderAll(){
+  renderStatRow();
+  renderOfflineBanner();
+  renderStationStrip();
+  renderStationCard();
+  renderFilters();
+  renderList();
+  renderDetail();
+}
+renderAll();
+</script>
+</body>
+</html>

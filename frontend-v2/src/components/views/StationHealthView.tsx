@@ -5,10 +5,12 @@ import { motion } from "motion/react";
 import { Camera, PawPrint, ChartLineUp, WarningCircle, Trash, ArrowRight } from "@phosphor-icons/react";
 import { TopBar } from "@/components/TopBar";
 import { useNavigation } from "@/lib/navigation-context";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { api, type Stats, type GalleryIndividual, type GISStation } from "@/lib/api";
 
 export function StationHealthView({ stats }: { stats: Stats | null }) {
   const { navigate } = useNavigation();
+  const { t } = useLanguage();
   const [individuals, setIndividuals] = useState<GalleryIndividual[] | null>(null);
   const [stations, setStations] = useState<GISStation[] | null>(null);
 
@@ -46,25 +48,25 @@ export function StationHealthView({ stats }: { stats: Stats | null }) {
   return (
     <div>
       <TopBar
-        title="Station Health"
-        subtitle="Camera network uptime and monitoring coverage across the reserve"
+        title={t("stations.title")}
+        subtitle={t("stations.subtitle")}
         alertCount={stats?.pending_review ?? 0}
       />
       <div className="px-8 py-6 space-y-6">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatBlock label="Total stations" value={totalStations} />
+          <StatBlock label={t("stations.totalStations")} value={totalStations} />
           <StatBlock
-            label="Operational"
+            label={t("stations.operational")}
             value={operational}
-            hint={uptimePct !== null ? `${uptimePct}% of network` : undefined}
+            hint={uptimePct !== null ? t("stations.ofNetwork", { pct: uptimePct! }) : undefined}
           />
           <StatBlock
-            label="Offline / degraded"
+            label={t("stations.offlineDegraded")}
             value={offline.length}
             tone={offline.length > 0 ? "caution" : undefined}
-            hint={offline.length > 0 ? "Needs field service" : undefined}
+            hint={offline.length > 0 ? t("stations.needsService") : undefined}
           />
-          <StatBlock label="Trap-nights logged" value={stats?.trap_nights_simulated} />
+          <StatBlock label={t("stations.trapNights")} value={stats?.trap_nights_simulated} />
         </div>
 
         {offline.length > 0 && (
@@ -72,7 +74,7 @@ export function StationHealthView({ stats }: { stats: Stats | null }) {
             <div className="mb-2 flex items-center gap-2 text-caution">
               <WarningCircle size={16} weight="fill" />
               <span className="text-sm font-medium">
-                {offline.length} station{offline.length > 1 ? "s" : ""} not reporting
+                {t("stations.stationsNotReporting", { count: offline.length, plural: offline.length > 1 ? "s" : "" })}
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -90,7 +92,7 @@ export function StationHealthView({ stats }: { stats: Stats | null }) {
                   onClick={() => setShowAllOffline((v) => !v)}
                   className="rounded-full bg-surface px-2.5 py-1 font-mono text-xs text-muted transition-colors hover:text-caution focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-caution"
                 >
-                  {showAllOffline ? "show fewer" : `+${offline.length - 20} more`}
+                  {showAllOffline ? t("stations.showFewer") : t("stations.moreCount", { count: offline.length - 20 })}
                 </button>
               )}
             </div>
@@ -101,7 +103,7 @@ export function StationHealthView({ stats }: { stats: Stats | null }) {
           <div className="mb-3 flex items-center gap-2">
             <ChartLineUp size={16} className="text-muted" />
             <span className="font-mono text-[11px] uppercase tracking-wide text-muted">
-              Most active stations
+              {t("stations.mostActive")}
             </span>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -125,34 +127,34 @@ export function StationHealthView({ stats }: { stats: Stats | null }) {
                           : "bg-danger-soft text-danger"
                       }`}
                     >
-                      {s.station.operational_status === "OPERATIONAL" ? "ONLINE" : "OFFLINE"}
+                      {s.station.operational_status === "OPERATIONAL" ? t("common.online") : t("common.offline")}
                     </span>
                   </div>
                   <div className="mt-3 font-mono text-base font-semibold text-foreground">{s.station.camera_id}</div>
-                  <div className="mt-1 text-xs text-muted">{s.station.zone} — {s.station.sub_region || "Unknown range"}</div>
+                  <div className="mt-1 text-xs text-muted">{s.station.zone} — {s.station.sub_region || t("common.unknownRange")}</div>
                   <div className="mt-2 flex items-center gap-1.5 text-sm text-muted">
                     <PawPrint size={13} />
-                    {s.individuals} individuals seen
+                    {t("stations.individualsSeen", { count: s.individuals })}
                   </div>
                 </motion.div>
               ))
             ) : (
-              <div className="col-span-full text-sm text-muted">Loading stations...</div>
+              <div className="col-span-full text-sm text-muted">{t("stations.loadingStations")}</div>
             )}
           </div>
         </div>
 
         <div className="rounded-2xl border border-border bg-surface p-5">
           <div className="mb-2 font-mono text-[11px] uppercase tracking-wide text-muted">
-            Current survey run
+            {t("stations.currentSurveyRun")}
           </div>
           <div className="text-sm text-foreground">
-            Simulated at {stats?.trap_nights_simulated ?? "—"} trap-nights across {stats?.total_stations ?? "—"} stations.
+            {t("stations.surveySimulated", {
+              nights: stats?.trap_nights_simulated ?? "—",
+              stations: stats?.total_stations ?? "—",
+            })}
           </div>
-          <p className="mt-2 text-xs text-muted">
-            Full batch ingestion run history will appear here once a real field-footage processing
-            pipeline is wired in.
-          </p>
+          <p className="mt-2 text-xs text-muted">{t("stations.surveyNote")}</p>
         </div>
 
         <button
@@ -164,10 +166,8 @@ export function StationHealthView({ stats }: { stats: Stats | null }) {
               <Trash size={17} />
             </div>
             <div>
-              <div className="text-sm font-medium text-foreground">Blank Frame Trash</div>
-              <p className="mt-0.5 text-xs text-muted">
-                Review frames auto-classified as blank during ingestion, restore misclassified ones, or purge them for good.
-              </p>
+              <div className="text-sm font-medium text-foreground">{t("stations.blankFrameTrash")}</div>
+              <p className="mt-0.5 text-xs text-muted">{t("stations.blankFrameTrashDesc")}</p>
             </div>
           </div>
           <ArrowRight size={16} className="shrink-0 text-muted" />

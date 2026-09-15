@@ -196,6 +196,115 @@ export interface GISMapBundle {
   recent_sightings: Sighting[];
 }
 
+export interface TigerAssociationPair {
+  tiger_a: string;
+  tiger_b: string;
+  sex_a: string;
+  sex_b: string;
+  co_occurrences: number;
+  shared_stations: string[];
+}
+
+export interface TigerAssociations {
+  pairs: TigerAssociationPair[];
+  window_hours: number;
+}
+
+export interface ScreeningFrame {
+  index: number;
+  timestamp_sec: number;
+  status: "KEPT" | "REJECTED";
+  reason:
+    | "TIGER_CANDIDATE"
+    | "BLANK_IMAGE"
+    | "NO_ANIMAL"
+    | "NON_ANIMAL"
+    | "NON_TARGET_WILDLIFE";
+  quality_score: number;
+  detection_class: string | null;
+  detection_conf: number;
+  thumbnail: string;
+}
+
+export interface ScreeningResult {
+  total_frames_sampled: number;
+  sample_fps: number;
+  counts: {
+    BLANK_IMAGE: number;
+    NON_ANIMAL: number;
+    NO_ANIMAL: number;
+    NON_TARGET_WILDLIFE: number;
+    TIGER_CANDIDATE: number;
+  };
+  frames: ScreeningFrame[];
+  best_frame: (ScreeningFrame & { full_image: string | null }) | null;
+}
+
+// ---------------------------------------------------------------------
+// Ranger Ops: field reports written by the Ranger Flutter app into
+// Supabase (see supabase/migrations/0001_ranger_ops.sql), read back here
+// and cross-referenced against the camera-trap network by the backend's
+// territory-check intelligence.
+// ---------------------------------------------------------------------
+
+export interface RangerObservation {
+  observation_id: string;
+  patrol_id: string | null;
+  ranger_id: string;
+  obs_type: string;
+  species_category?: string | null;
+  severity?: string | null;
+  lat: number | null;
+  lon: number | null;
+  timestamp: string;
+  structured_attrs?: Record<string, unknown> | null;
+  remarks?: string | null;
+  sync_status?: string;
+  created_at?: string;
+}
+
+export interface RangerPatrol {
+  patrol_id: string;
+  ranger_id: string;
+  team_id?: string | null;
+  beat_area?: string | null;
+  patrol_type?: string | null;
+  status?: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  distance_km?: number | null;
+  created_at?: string;
+}
+
+export type TerritoryCheckStatus =
+  | "confirmed_present"
+  | "possible_move"
+  | "no_recent_data"
+  | "no_location";
+
+export interface NearestCamera {
+  camera_id: string;
+  distance_km: number;
+  zone?: string;
+  sub_region?: string;
+}
+
+export interface TerritoryCheck {
+  check_id: string;
+  observation_id: string;
+  resident_tiger_id: string | null;
+  nearest_cameras: NearestCamera[];
+  status: TerritoryCheckStatus;
+  summary: string;
+  computed_at: string;
+}
+
+export interface RangerReports {
+  patrols: RangerPatrol[];
+  observations: RangerObservation[];
+  configured: boolean;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, options);
   if (!res.ok) {
@@ -211,6 +320,11 @@ export const api = {
 
   galleryDetail: (tigerId: string) =>
     request<GalleryDetail>(`/api/gallery/${tigerId}`),
+
+  tigerAssociations: (limit = 10, oppositeSexOnly = true, windowHours = 48) =>
+    request<TigerAssociations>(
+      `/api/tiger-associations?limit=${limit}&opposite_sex_only=${oppositeSexOnly}&window_hours=${windowHours}`
+    ),
 
   gisBundle: async (): Promise<GISMapBundle> => {
     try {
@@ -244,6 +358,15 @@ export const api = {
     });
   },
 
+  screenVideo: (file: File, sampleFps = 3) => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<ScreeningResult>(
+      `/api/screening/process-video?sample_fps=${sampleFps}`,
+      { method: "POST", body: form }
+    );
+  },
+
   reviewQueue: () => request<{ items: ReviewQueueItem[] }>("/api/review-queue"),
 
   resolveReview: (itemId: string, tigerId: string | null) =>
@@ -260,4 +383,16 @@ export const api = {
     request<{ is_fully_trained: boolean; weights_loaded: Record<string, boolean>; checkpoints_dir: string }>(
       "/api/model-status"
     ),
+
+  rangerReports: () => request<RangerReports>("/api/ranger/reports"),
+
+  runTerritoryCheck: (observationId: string) =>
+    request<TerritoryCheck>(`/api/ranger/territory-check/${encodeURIComponent(observationId)}`, {
+      method: "POST",
+    }),
+
+  runPendingTerritoryChecks: () =>
+    request<{ processed: number; configured: boolean }>("/api/ranger/territory-check/run-pending", {
+      method: "POST",
+    }),
 };

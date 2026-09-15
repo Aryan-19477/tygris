@@ -15,6 +15,7 @@ import {
 import { TopBar } from "@/components/TopBar";
 import { StationUploadPanel } from "@/components/StationUploadPanel";
 import type { MapLayerToggles } from "@/components/LeafletSatelliteMap";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import {
   api,
   type Stats,
@@ -26,27 +27,20 @@ const LeafletSatelliteMap = dynamic(
   () => import("@/components/LeafletSatelliteMap").then((mod) => mod.LeafletSatelliteMap),
   {
     ssr: false,
-    loading: () => (
-      <div className="flex h-full min-h-140 w-full items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-950 text-muted font-mono text-sm">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-7 w-7 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-          <span className="text-zinc-300">Loading satellite view...</span>
-        </div>
-      </div>
-    ),
+    loading: () => <MapLoadingFallback />,
   }
 );
 
 type LayerKey = keyof MapLayerToggles;
 
-const LAYER_CONFIG: { key: LayerKey; label: string }[] = [
-  { key: "lastSeen", label: "Tigers last seen" },
-  { key: "territories", label: "Territories" },
-  { key: "stations", label: "Cameras" },
-  { key: "core", label: "Core forest" },
-  { key: "buffer", label: "Buffer zone" },
-  { key: "villages", label: "Villages" },
-  { key: "subregions", label: "Ranges" },
+const LAYER_CONFIG: { key: LayerKey; labelKey: string }[] = [
+  { key: "lastSeen", labelKey: "map.layerLastSeen" },
+  { key: "territories", labelKey: "map.layerTerritories" },
+  { key: "stations", labelKey: "map.layerStations" },
+  { key: "core", labelKey: "map.layerCore" },
+  { key: "buffer", labelKey: "map.layerBuffer" },
+  { key: "villages", labelKey: "map.layerVillages" },
+  { key: "subregions", labelKey: "map.layerSubregions" },
 ];
 
 export function ReserveMapView({
@@ -56,6 +50,7 @@ export function ReserveMapView({
   onOpenTiger: (tigerId: string) => void;
   stats: Stats | null;
 }) {
+  const { t } = useLanguage();
   const [bundle, setBundle] = useState<GISMapBundle | null>(null);
   const [selectedStation, setSelectedStation] = useState<GISStation | null>(null);
   const [uploadStation, setUploadStation] = useState<GISStation | null>(null);
@@ -90,11 +85,11 @@ export function ReserveMapView({
     for (const s of bundle.recent_sightings || []) {
       if (s.alert_level === "CRITICAL" && !seen.has(s.tiger_id)) {
         seen.add(s.tiger_id);
-        results.push({ tiger_id: s.tiger_id, reason: s.threat_reason || "Near a village boundary" });
+        results.push({ tiger_id: s.tiger_id, reason: s.threat_reason || t("map.threatReasonDefault") });
       }
     }
     return results;
-  }, [bundle]);
+  }, [bundle, t]);
 
   const searchResults = useMemo(() => {
     if (!bundle || !searchQuery.trim()) return [];
@@ -107,22 +102,25 @@ export function ReserveMapView({
   return (
     <div className="min-h-full">
       <TopBar
-        title="Reserve Map"
-        subtitle="Live tiger positions, camera network, and zone status across Pench"
+        title={t("map.title")}
+        subtitle={t("map.subtitle")}
         alertCount={stats?.pending_review ?? 0}
       />
 
       <div className="px-6 py-5 sm:px-8">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <StatChip icon={PawPrint} label="Tigers" value={bundle?.metadata.total_tigers ?? 44} />
-            <StatChip icon={Camera} label="Cameras" value={bundle?.metadata.total_stations ?? 313} />
-            <StatChip icon={House} label="Villages" value={bundle?.metadata.total_villages ?? 44} />
+            <StatChip icon={PawPrint} label={t("map.statTigers")} value={bundle?.metadata.total_tigers ?? 62} />
+            <StatChip icon={Camera} label={t("map.statCameras")} value={bundle?.metadata.total_stations ?? 295} />
+            <StatChip icon={House} label={t("map.statVillages")} value={bundle?.metadata.total_villages ?? 44} />
             {criticalTigers.length > 0 && (
               <div className="flex items-center gap-2 rounded-xl border border-danger/40 bg-danger-soft px-3.5 py-2 text-danger">
                 <WarningCircle size={16} weight="fill" />
                 <span className="text-xs font-semibold">
-                  {criticalTigers.length} tiger{criticalTigers.length > 1 ? "s" : ""} near village boundary
+                  {t("map.criticalBanner", {
+                    count: criticalTigers.length,
+                    plural: criticalTigers.length > 1 ? "s" : "",
+                  })}
                 </span>
               </div>
             )}
@@ -133,21 +131,21 @@ export function ReserveMapView({
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Find a tiger..."
+              placeholder={t("map.searchPlaceholder")}
               className="w-56 rounded-full border border-border bg-surface py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
             />
             {searchResults.length > 0 && (
               <div className="absolute right-0 top-11 z-50 w-64 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
-                {searchResults.map((t) => (
+                {searchResults.map((res) => (
                   <button
-                    key={t.tiger_id}
+                    key={res.tiger_id}
                     onClick={() => {
-                      setSelectedTigerId(t.tiger_id);
+                      setSelectedTigerId(res.tiger_id);
                       setSearchQuery("");
                     }}
                     className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm hover:bg-surface-sunken"
                   >
-                    <span className="font-mono text-foreground">{t.tiger_id}</span>
+                    <span className="font-mono text-foreground">{res.tiger_id}</span>
                     <ArrowRight size={13} className="text-muted" />
                   </button>
                 ))}
@@ -157,7 +155,7 @@ export function ReserveMapView({
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-1.5 rounded-xl border border-border bg-surface p-1.5">
-          {LAYER_CONFIG.map(({ key, label }) => {
+          {LAYER_CONFIG.map(({ key, labelKey }) => {
             const active = layers[key];
             return (
               <button
@@ -170,7 +168,7 @@ export function ReserveMapView({
                 }`}
               >
                 {active ? <CheckSquare size={13} weight="fill" /> : <Square size={13} />}
-                {label}
+                {t(labelKey)}
               </button>
             );
           })}
@@ -198,7 +196,7 @@ export function ReserveMapView({
             <div>
               <div className="font-mono text-xs text-muted">{selectedStation.camera_id}</div>
               <div className="text-sm text-foreground">
-                {selectedStation.zone} — {selectedStation.sub_region || "Unknown range"} — {selectedStation.operational_status}
+                {selectedStation.zone} — {selectedStation.sub_region || t("common.unknownRange")} — {selectedStation.operational_status}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -206,13 +204,13 @@ export function ReserveMapView({
                 onClick={() => setUploadStation(selectedStation)}
                 className="rounded-full bg-accent px-3.5 py-1.5 text-xs font-medium text-accent-foreground hover:opacity-90"
               >
-                Upload capture here
+                {t("map.uploadCaptureHere")}
               </button>
               <button
                 onClick={() => setSelectedStation(null)}
                 className="rounded-full border border-border-strong px-3.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface-sunken"
               >
-                Close
+                {t("common.close")}
               </button>
             </div>
           </div>
@@ -226,14 +224,14 @@ export function ReserveMapView({
                 onClick={() => onOpenTiger(selectedTigerId)}
                 className="flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-xs font-medium text-accent-foreground hover:opacity-90"
               >
-                Open dossier
+                {t("map.openDossier")}
                 <ArrowRight size={12} />
               </button>
               <button
                 onClick={() => setSelectedTigerId(null)}
                 className="rounded-full border border-border-strong px-3.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface-sunken"
               >
-                Close
+                {t("common.close")}
               </button>
             </div>
           </div>
@@ -243,6 +241,18 @@ export function ReserveMapView({
       {uploadStation && (
         <StationUploadPanel station={uploadStation} onClose={() => setUploadStation(null)} />
       )}
+    </div>
+  );
+}
+
+function MapLoadingFallback() {
+  const { t } = useLanguage();
+  return (
+    <div className="flex h-full min-h-140 w-full items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-950 text-muted font-mono text-sm">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+        <span className="text-zinc-300">{t("map.loadingMap")}</span>
+      </div>
     </div>
   );
 }

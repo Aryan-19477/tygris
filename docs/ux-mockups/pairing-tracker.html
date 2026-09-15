@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pairs & Family Groups</title>
+<style>
+  :root{
+    --background:#F7F5F0; --surface:#FFFFFF; --surface-sunken:#F0EDE5;
+    --foreground:#1F2420; --muted:#6B7268; --border:#E2DFD6; --border-strong:#CBC6B7;
+    --accent:#2F5233; --accent-soft:rgba(47,82,51,.1);
+    --caution:#9C6B1E; --caution-soft:rgba(156,107,30,.12);
+    --danger:#A23B2C; --danger-soft:rgba(162,59,44,.1);
+    --mono:ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--background);color:var(--foreground);font:14px/1.5 system-ui,-apple-system,sans-serif;padding:24px;}
+  .wrap{max-width:900px;margin:0 auto;}
+  h1{font-size:21px;margin:0 0 2px;}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:0 0 4px;}
+  p.lede{color:var(--muted);font-size:13px;margin:6px 0 22px;max-width:60ch;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;display:flex;gap:14px;align-items:flex-start;}
+  .pair-avatars{display:flex;flex:none;}
+  .avatar{width:38px;height:38px;border-radius:50%;border:2px solid var(--surface);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;font-weight:600;color:#fff;}
+  .avatar:nth-child(2){margin-left:-12px;}
+  .body{flex:1;min-width:0;}
+  .row1{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .names{font-weight:600;font-size:13.5px;}
+  .tag{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:6px;white-space:nowrap;}
+  .tag.court{background:var(--danger-soft);color:var(--danger);}
+  .tag.family{background:var(--accent-soft);color:var(--accent);}
+  .tag.overlap{background:var(--caution-soft);color:var(--caution);}
+  .meta{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px;}
+  .evidence{font-size:12px;color:var(--muted);margin-top:6px;}
+  .legend{display:flex;gap:14px;margin-bottom:18px;font-size:11.5px;color:var(--muted);flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .dot{width:8px;height:8px;border-radius:50%;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Pench Tiger Reserve</p>
+  <h1>Pairs &amp; Family Groups</h1>
+  <p class="lede">Auto-detected from capture events where two or more known tigers appear in the same photo/video, or on the same camera within a short window &mdash; surfaced for a biologist to confirm as courtship, a family unit, or incidental territory overlap.</p>
+
+  <div class="legend">
+    <span><span class="dot" style="background:#A23B2C"></span> Courtship / consortship</span>
+    <span><span class="dot" style="background:#2F5233"></span> Family group (mother + cubs)</span>
+    <span><span class="dot" style="background:#9C6B1E"></span> Territory overlap (unrelated)</span>
+  </div>
+
+  <div class="card">
+    <div class="pair-avatars">
+      <div class="avatar" style="background:#A23B2C">T045</div>
+      <div class="avatar" style="background:#7A2E22">T012</div>
+    </div>
+    <div class="body">
+      <div class="row1">
+        <span class="names">T045_F &amp; T012_M</span>
+        <span class="tag court">Courtship &middot; 6 joint sightings</span>
+      </div>
+      <div class="meta">CAM-07, CAM-11 &middot; Zone C corridor &middot; 14&ndash;21 Sep 2026</div>
+      <div class="evidence">Same-frame co-occurrence on 4 of 6 sightings; scent-marking posture flagged on 09-18 clip. Consistent with known Oct&ndash;Dec breeding window.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="pair-avatars">
+      <div class="avatar" style="background:#2F5233">T098</div>
+      <div class="avatar" style="background:#4A7A4E">c1</div>
+      <div class="avatar" style="background:#4A7A4E">c2</div>
+    </div>
+    <div class="body">
+      <div class="row1">
+        <span class="names">T098_F + 2 unenrolled cubs</span>
+        <span class="tag family">Family group &middot; new litter</span>
+      </div>
+      <div class="meta">CAM-03 &middot; Zone A core &middot; first seen 02 Sep 2026</div>
+      <div class="evidence">Cubs not yet enrolled in the gallery &mdash; flagged for manual ID once striping is distinct enough (typically 4&ndash;6 months).</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="pair-avatars">
+      <div class="avatar" style="background:#9C6B1E">T077</div>
+      <div class="avatar" style="background:#7A5316">T134</div>
+    </div>
+    <div class="body">
+      <div class="row1">
+        <span class="names">T077_M &amp; T134_M</span>
+        <span class="tag overlap">Territory overlap &middot; 2 shared cameras</span>
+      </div>
+      <div class="meta">CAM-01, CAM-09 &middot; Zone B buffer &middot; 30-day window</div>
+      <div class="evidence">Both males logged at the same cameras on different days, never in the same frame &mdash; likely range overlap, not a bonded pair. Worth a boundary-dispute watch.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

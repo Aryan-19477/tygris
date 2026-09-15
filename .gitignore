@@ -49,6 +49,12 @@
 /1-s2.0-S1470160X25001566-main.pdf
 /klasifikasi-gambar.ipynb
 
+# Local ML working artifacts (raw datasets, venvs, checkpoints, logs)
+/Dataset/
+backend/.venv312/
+backend/checkpoints/
+backend/logs/
+
 # Environment & Secrets (NEVER COMMIT SENSITIVE KEYS)
 .env
 .env.*

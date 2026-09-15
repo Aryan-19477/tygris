@@ -14,15 +14,16 @@ import {
 import { TopBar } from "@/components/TopBar";
 import { api, type Stats } from "@/lib/api";
 import { buildAttentionQueue, type AttentionItem, type UrgencyLevel } from "@/lib/attention";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
-const URGENCY_STYLE: Record<UrgencyLevel, { label: string; text: string; bg: string; border: string; dot: string }> = {
-  CRITICAL: { label: "Critical", text: "text-danger", bg: "bg-danger-soft", border: "border-danger/40", dot: "bg-danger" },
-  CAUTION: { label: "Caution", text: "text-caution", bg: "bg-caution-soft", border: "border-caution/40", dot: "bg-caution" },
-  ROUTINE: { label: "Routine", text: "text-muted", bg: "bg-surface-sunken", border: "border-border", dot: "bg-muted" },
+const URGENCY_STYLE: Record<UrgencyLevel, { labelKey: string; text: string; bg: string; border: string; dot: string }> = {
+  CRITICAL: { labelKey: "attention.urgencyCritical", text: "text-danger", bg: "bg-danger-soft", border: "border-danger/40", dot: "bg-danger" },
+  CAUTION: { labelKey: "attention.urgencyCaution", text: "text-caution", bg: "bg-caution-soft", border: "border-caution/40", dot: "bg-caution" },
+  ROUTINE: { labelKey: "attention.urgencyRoutine", text: "text-muted", bg: "bg-surface-sunken", border: "border-border", dot: "bg-muted" },
 };
 
-function formatTime(iso: string | undefined) {
-  if (!iso) return "Unknown time";
+function formatTime(iso: string | undefined, unknownLabel: string) {
+  if (!iso) return unknownLabel;
   try {
     return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   } catch {
@@ -37,6 +38,7 @@ export function AttentionQueueView({
   stats: Stats | null;
   onResolved: () => void;
 }) {
+  const { t } = useLanguage();
   const [items, setItems] = useState<AttentionItem[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [resolving, setResolving] = useState<string | null>(null);
@@ -87,17 +89,17 @@ export function AttentionQueueView({
   return (
     <div>
       <TopBar
-        title="Attention Queue"
-        subtitle="Village-proximity conflicts and ambiguous identifications, ranked by urgency"
+        title={t("attention.title")}
+        subtitle={t("attention.subtitle")}
         alertCount={items?.length ?? stats?.pending_review ?? 0}
       />
 
       <div className="grid grid-cols-1 gap-0 lg:grid-cols-[1fr_420px]">
         <div className="border-r border-border px-8 py-6">
           <div className="mb-6 flex items-center gap-6">
-            <PriorityCount label="Critical" count={criticalCount} color="text-danger" />
-            <PriorityCount label="Caution" count={cautionCount} color="text-caution" />
-            <PriorityCount label="Total pending" count={items?.length ?? 0} color="text-foreground" />
+            <PriorityCount label={t("attention.urgencyCritical")} count={criticalCount} color="text-danger" />
+            <PriorityCount label={t("attention.urgencyCaution")} count={cautionCount} color="text-caution" />
+            <PriorityCount label={t("attention.priorityTotalPending")} count={items?.length ?? 0} color="text-foreground" />
           </div>
 
           {items && items.length === 0 && (
@@ -105,8 +107,8 @@ export function AttentionQueueView({
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-positive-soft text-positive">
                 <ListChecks size={22} weight="fill" />
               </div>
-              <p className="mt-3 text-[15px] font-medium text-foreground">Queue is clear</p>
-              <p className="mt-1 text-sm text-muted">No conflicts or ambiguous captures right now</p>
+              <p className="mt-3 text-[15px] font-medium text-foreground">{t("attention.queueClear")}</p>
+              <p className="mt-1 text-sm text-muted">{t("attention.queueClearSub")}</p>
             </div>
           )}
 
@@ -136,7 +138,7 @@ export function AttentionQueueView({
             ) : (
               <div className="flex min-h-75 flex-col items-center justify-center rounded-2xl border border-dashed border-border-strong text-center text-muted">
                 <Target size={22} />
-                <p className="mt-3 text-sm">Select an item to review</p>
+                <p className="mt-3 text-sm">{t("attention.selectItem")}</p>
               </div>
             )}
           </AnimatePresence>
@@ -166,6 +168,7 @@ function QueueCard({
   active: boolean;
   onClick: () => void;
 }) {
+  const { t } = useLanguage();
   const style = URGENCY_STYLE[item.urgency];
   return (
     <motion.button
@@ -190,7 +193,7 @@ function QueueCard({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide ${style.bg} ${style.text}`}>
-            {style.label}
+            {t(style.labelKey)}
           </span>
           <span className="truncate text-sm font-medium text-foreground">{item.headline}</span>
         </div>
@@ -211,6 +214,7 @@ function QueueDetail({
   onResolve: (tigerId: string | null) => void;
   onAcknowledge: () => void;
 }) {
+  const { t } = useLanguage();
   const style = URGENCY_STYLE[item.urgency];
 
   return (
@@ -223,7 +227,7 @@ function QueueDetail({
     >
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <span className={`rounded-full px-2.5 py-1 font-mono text-[11px] font-semibold uppercase tracking-wide ${style.bg} ${style.text}`}>
-          {style.label}
+          {t(style.labelKey)}
         </span>
       </div>
 
@@ -247,14 +251,14 @@ function QueueDetail({
           )}
           <div className="flex items-center gap-2">
             <Clock size={13} />
-            <span>{formatTime(item.timestamp)}</span>
+            <span>{formatTime(item.timestamp, t("common.unknownTime"))}</span>
           </div>
         </div>
 
         {item.kind === "identification" && item.reviewItem && (
           <>
             <div className="mt-5 mb-2 font-mono text-[11px] uppercase tracking-wide text-muted">
-              Closest candidates
+              {t("attention.closestCandidates")}
             </div>
             <div className="space-y-2">
               {item.reviewItem.candidates.slice(0, 4).map((c) => (
@@ -282,7 +286,7 @@ function QueueDetail({
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               <Sparkle size={14} weight="fill" />
-              None of these, enroll as new individual
+              {t("attention.enrollNew")}
             </button>
           </>
         )}
@@ -290,8 +294,7 @@ function QueueDetail({
         {item.kind === "conflict" && (
           <>
             <div className="mt-5 rounded-xl border border-border bg-surface-sunken p-3 text-xs text-muted">
-              This is a movement alert, not an identification decision — the tiger has already been identified.
-              Coordinate a field response if the proximity warrants one.
+              {t("attention.conflictExplainer")}
             </div>
 
             <button
@@ -300,7 +303,7 @@ function QueueDetail({
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
               <CheckCircle size={14} weight="fill" />
-              Mark as handled
+              {t("attention.markHandled")}
             </button>
           </>
         )}

@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { Bell, UserCircle, SignOut } from "@phosphor-icons/react";
 import { useNavigation } from "@/lib/navigation-context";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 import VoiceAgentButton from "./VoiceAgentButton";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 export function TopBar({
   title,
@@ -17,6 +19,7 @@ export function TopBar({
   right?: React.ReactNode;
 }) {
   const { navigate } = useNavigation();
+  const { t } = useLanguage();
   const [accountOpen, setAccountOpen] = useState(false);
 
   return (
@@ -31,9 +34,10 @@ export function TopBar({
       <div className="flex shrink-0 items-center gap-3 sm:gap-4">
         {right}
         <VoiceAgentButton />
+        <LanguageSwitcher />
         <button
           onClick={() => navigate("attention")}
-          title="Attention Queue"
+          title={t("nav.attention")}
           className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-muted transition-colors hover:border-border-strong hover:text-foreground"
         >
           <Bell size={16} />
@@ -47,7 +51,7 @@ export function TopBar({
         <div className="relative hidden sm:block">
           <button
             onClick={() => setAccountOpen((v) => !v)}
-            title="Account"
+            title={t("topbar.account")}
             className={`flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${
               accountOpen
                 ? "border-accent bg-accent-soft text-accent"
@@ -62,8 +66,8 @@ export function TopBar({
               <div className="fixed inset-0 z-40" onClick={() => setAccountOpen(false)} />
               <div className="absolute right-0 top-11 z-50 w-56 overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
                 <div className="border-b border-border px-4 py-3">
-                  <div className="text-sm font-medium text-foreground">Range Officer</div>
-                  <div className="text-xs text-muted">Forest Department</div>
+                  <div className="text-sm font-medium text-foreground">{t("nav.roleName")}</div>
+                  <div className="text-xs text-muted">{t("nav.department")}</div>
                 </div>
                 <button
                   onClick={() => {
@@ -73,13 +77,13 @@ export function TopBar({
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-foreground hover:bg-surface-sunken"
                 >
                   <UserCircle size={15} className="text-muted" />
-                  Settings
+                  {t("nav.settings")}
                 </button>
                 <button
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-danger hover:bg-danger-soft"
                 >
                   <SignOut size={15} />
-                  Log out
+                  {t("topbar.logout")}
                 </button>
               </div>
             </>

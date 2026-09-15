@@ -8,20 +8,27 @@ import { AttentionQueueView } from "./views/AttentionQueueView";
 import { TigerCatalogueView } from "./views/TigerCatalogueView";
 import { TigerDossierView } from "./views/TigerDossierView";
 import { StationHealthView } from "./views/StationHealthView";
+import { RangerReportsView } from "./views/RangerReportsView";
+import { PairsView } from "./views/PairsView";
 import { IdentifyView } from "./views/IdentifyView";
 import { SettingsView } from "./views/SettingsView";
 import { BlankFrameTrashView } from "./views/BlankFrameTrashView";
+import { Pass1ScreeningView } from "./views/Pass1ScreeningView";
 import ChatAssistantPanel from "./ChatAssistantPanel";
 import { api, type Stats } from "@/lib/api";
 import { NavigationContext } from "@/lib/navigation-context";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 export type View =
   | "map"
   | "attention"
   | "catalogue"
+  | "pairs"
   | "dossier"
   | "stations"
+  | "rangerReports"
   | "identify"
+  | "screening"
   | "trash"
   | "settings";
 
@@ -55,6 +62,7 @@ export function AppShell() {
   const navigationValue = useMemo(() => ({ navigate }), [navigate]);
 
   return (
+    <LanguageProvider>
     <NavigationContext.Provider value={navigationValue}>
       <div className="flex h-dvh overflow-hidden bg-background">
         <Sidebar
@@ -87,6 +95,9 @@ export function AppShell() {
             {view === "catalogue" && (
               <TigerCatalogueView stats={stats} onOpenTiger={openTigerDossier} />
             )}
+            {view === "pairs" && (
+              <PairsView stats={stats} onOpenTiger={openTigerDossier} />
+            )}
             {view === "dossier" && selectedTigerId && (
               <TigerDossierView
                 key={selectedTigerId}
@@ -97,7 +108,9 @@ export function AppShell() {
               />
             )}
             {view === "stations" && <StationHealthView stats={stats} />}
+            {view === "rangerReports" && <RangerReportsView stats={stats} />}
             {view === "identify" && <IdentifyView stats={stats} />}
+            {view === "screening" && <Pass1ScreeningView stats={stats} />}
             {view === "trash" && <BlankFrameTrashView stats={stats} />}
             {view === "settings" && <SettingsView />}
           </main>
@@ -105,5 +118,6 @@ export function AppShell() {
       </div>
       <ChatAssistantPanel />
     </NavigationContext.Provider>
+    </LanguageProvider>
   );
 }

@@ -10,6 +10,7 @@ import {
   UserPlus,
 } from "@phosphor-icons/react";
 import { api, type IdentifyResult } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type Phase = "idle" | "uploading" | "result" | "error";
 
@@ -21,6 +22,7 @@ type Phase = "idle" | "uploading" | "result" | "error";
  * leave it unset for a capture that isn't tied to a specific camera.
  */
 export function IdentifyCapture({ stationId }: { stationId?: string }) {
+  const { t } = useLanguage();
   const [phase, setPhase] = useState<Phase>("idle");
   const [result, setResult] = useState<IdentifyResult | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -79,8 +81,8 @@ export function IdentifyCapture({ stationId }: { stationId?: string }) {
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-accent">
             <UploadSimple size={20} weight="bold" />
           </div>
-          <p className="text-sm font-medium text-foreground">Drop a camera trap photo</p>
-          <p className="text-xs text-muted">or tap to browse</p>
+          <p className="text-sm font-medium text-foreground">{t("identifyCapture.dropTitle")}</p>
+          <p className="text-xs text-muted">{t("identifyCapture.dropSub")}</p>
         </div>
       )}
 
@@ -89,19 +91,19 @@ export function IdentifyCapture({ stationId }: { stationId?: string }) {
           <div className="flex h-12 w-12 animate-spin items-center justify-center rounded-full bg-accent-soft text-accent">
             <Sparkle size={20} weight="fill" />
           </div>
-          <p className="text-sm font-medium text-foreground">Identifying...</p>
+          <p className="text-sm font-medium text-foreground">{t("identifyCapture.identifying")}</p>
         </div>
       )}
 
       {phase === "error" && (
         <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-xl border border-danger/30 bg-danger-soft">
           <WarningCircle size={26} className="text-danger" />
-          <p className="text-sm font-medium text-danger">Could not reach the identification service</p>
+          <p className="text-sm font-medium text-danger">{t("identifyCapture.errorTitle")}</p>
           <button
             onClick={() => setPhase("idle")}
             className="rounded-full border border-border-strong px-3.5 py-1.5 text-sm font-medium text-foreground hover:bg-surface"
           >
-            Try again
+            {t("identifyCapture.tryAgain")}
           </button>
         </div>
       )}
@@ -122,22 +124,22 @@ export function IdentifyCapture({ stationId }: { stationId?: string }) {
             </div>
             <div className="flex-1">
               <div className="font-mono text-[11px] uppercase tracking-wide text-muted">
-                {isKnown ? "Confident match" : "Needs a decision"}
+                {isKnown ? t("identifyCapture.confidentMatch") : t("identifyCapture.needsDecision")}
               </div>
               <div className="text-lg font-semibold text-foreground">
-                {isKnown ? result.tiger_id : result.predicted_tiger_id || "Unrecognized"}
+                {isKnown ? result.tiger_id : result.predicted_tiger_id || t("identifyCapture.unrecognized")}
               </div>
             </div>
             <div className="text-right font-mono text-xs text-muted">
-              <div>{Math.round(result.confidence * 100)}% similarity</div>
-              <div>vs. {result.gallery_size} enrolled tigers</div>
+              <div>{t("identifyCapture.similarity", { pct: Math.round(result.confidence * 100) })}</div>
+              <div>{t("identifyCapture.vsEnrolled", { count: result.gallery_size })}</div>
             </div>
           </div>
 
           {!isKnown && result.candidates && result.candidates.length > 0 && (
             <div className="flex flex-col gap-2">
               <div className="font-mono text-[11px] uppercase tracking-wide text-muted">
-                Closest candidates
+                {t("attention.closestCandidates")}
               </div>
               {result.candidates.slice(0, 3).map((c) => (
                 <div
@@ -155,10 +157,7 @@ export function IdentifyCapture({ stationId }: { stationId?: string }) {
               ))}
               <div className="mt-1 flex items-start gap-2 rounded-xl border border-caution/30 bg-caution-soft p-3 text-xs text-caution">
                 <UserPlus size={15} className="mt-0.5 shrink-0" />
-                <span>
-                  No candidate is confident enough to auto-match. Use your own judgment on which
-                  individual this is, or flag it as a possible new tiger when you log the sighting.
-                </span>
+                <span>{t("identifyCapture.noCandidateWarning")}</span>
               </div>
             </div>
           )}
@@ -166,7 +165,7 @@ export function IdentifyCapture({ stationId }: { stationId?: string }) {
           {result.recorded_status === "SAVED_TO_GRAPH" && (
             <div className="flex items-center gap-2 rounded-lg bg-surface-sunken px-3 py-2 font-mono text-[11px] text-muted">
               <CheckCircle size={13} className="text-positive" />
-              <span>Sighting logged as {result.recorded_event_id}</span>
+              <span>{t("identifyCapture.sightingLogged", { id: result.recorded_event_id ?? "" })}</span>
             </div>
           )}
 
@@ -178,7 +177,7 @@ export function IdentifyCapture({ stationId }: { stationId?: string }) {
             className="flex items-center justify-center gap-1.5 rounded-full border border-border-strong px-3.5 py-2 text-sm font-medium text-foreground hover:bg-surface"
           >
             <ArrowClockwise size={13} />
-            Upload another
+            {t("identifyCapture.uploadAnother")}
           </button>
         </div>
       )}

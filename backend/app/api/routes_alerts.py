@@ -123,27 +123,27 @@ def get_stats():
 
     if not os.path.exists(DB_PATH):
         return {
-            "total_individuals": 44,
-            "total_stations": 311,
-            "active_stations": 296,
-            "total_captures": 1840,
+            "total_individuals": 62,
+            "total_stations": 295,
+            "active_stations": 295,
+            "total_captures": 2172,
             "pending_review": pending_count,
             "critical_alerts": 4,
             "caution_alerts": 18,
             "trap_nights_simulated": 8415,
-            "core_area_km2": 439.24,
-            "buffer_area_km2": 301.97,
-            "stations": [f"PTR_CAM_{i:03d}" for i in range(1, 312)]
+            "core_area_km2": 437.88,
+            "buffer_area_km2": 267.57,
+            "stations": [f"PTR_CAM_{i:03d}" for i in range(1, 296)]
         }
 
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
     cur.execute("SELECT COUNT(*) FROM tiger_profiles")
-    total_tigers = cur.fetchone()[0] or 44
+    total_tigers = cur.fetchone()[0] or 62
 
     cur.execute("SELECT COUNT(*) FROM camera_stations")
-    total_cams = cur.fetchone()[0] or 311
+    total_cams = cur.fetchone()[0] or 295
 
     cur.execute("SELECT COUNT(*) FROM camera_stations WHERE operational_status = 'OPERATIONAL'")
     active_cams = cur.fetchone()[0] or total_cams

@@ -310,8 +310,8 @@ class SimulationWorldGenerator:
                 "total_stations": len(stations),
                 "total_tigers": len(tigers),
                 "total_villages": len(VILLAGES_44),
-                "core_area_km2": 439.24,
-                "buffer_area_km2": 301.97,
+                "core_area_km2": 437.88,
+                "buffer_area_km2": 267.57,
                 "sampling_grid_size_km2": 2.0
             },
             "core_boundary": CORE_BOUNDARY,

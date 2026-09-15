@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Microphone } from "@phosphor-icons/react";
 import { detectLangFromTranscript, normalizeScribeLang, type Lang } from "@/lib/voiceDemoScript";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 async function askAssistant(message: string, lang: Lang): Promise<string> {
   const res = await fetch("/api/assistant", {
@@ -51,6 +52,7 @@ async function recordAudio(ms: number): Promise<Blob> {
 }
 
 export default function VoiceAgentButton() {
+  const { t } = useLanguage();
   const [status, setStatus] = useState<Status>("idle");
   const [heard, setHeard] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -58,7 +60,7 @@ export default function VoiceAgentButton() {
   const handleClick = async () => {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       setStatus("error");
-      setErrorMsg("Microphone recording isn't supported in this browser.");
+      setErrorMsg(t("voice.micNotSupported"));
       return;
     }
 
@@ -72,7 +74,7 @@ export default function VoiceAgentButton() {
     } catch (err) {
       console.error("[voice] mic recording failed:", err);
       setStatus("error");
-      setErrorMsg("Mic access failed — check browser permission.");
+      setErrorMsg(t("voice.micAccessFailed"));
       return;
     }
 
@@ -92,13 +94,13 @@ export default function VoiceAgentButton() {
     } catch (err) {
       console.error("[voice] STT request failed:", err);
       setStatus("error");
-      setErrorMsg("Couldn't transcribe audio — try again.");
+      setErrorMsg(t("voice.transcribeFailed"));
       return;
     }
 
     if (!transcript.trim()) {
       setStatus("error");
-      setErrorMsg("Didn't catch that — speak clearly and try again.");
+      setErrorMsg(t("voice.noSpeechDetected"));
       return;
     }
 
@@ -134,20 +136,20 @@ export default function VoiceAgentButton() {
     } catch (err) {
       console.error(err);
       setStatus("error");
-      setErrorMsg(err instanceof Error ? err.message : "Voice reply failed.");
+      setErrorMsg(err instanceof Error ? err.message : t("voice.replyFailed"));
     }
   };
 
   const label =
     status === "listening"
-      ? "Listening…"
+      ? t("voice.listening")
       : status === "thinking"
-        ? "Thinking…"
+        ? t("voice.thinking")
         : status === "speaking"
-          ? "Speaking…"
+          ? t("voice.speaking")
           : status === "error"
-            ? "Try again"
-            : "Ask field assistant";
+            ? t("voice.tryAgain")
+            : t("voice.askAssistant");
 
   const busy = status === "listening" || status === "thinking" || status === "speaking";
 

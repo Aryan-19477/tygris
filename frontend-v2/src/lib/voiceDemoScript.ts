@@ -24,7 +24,7 @@ export const DEMO_QA: Record<Lang, DemoQA[]> = {
     {
       id: "tigers_tracked",
       matchKeywords: ["how many tigers"],
-      answer: "We are currently tracking 44 individual tigers across the reserve.",
+      answer: "We are currently tracking 62 individual tigers across the reserve.",
     },
     {
       id: "village_proximity",
@@ -60,7 +60,7 @@ export const DEMO_QA: Record<Lang, DemoQA[]> = {
     {
       id: "tigers_tracked",
       matchKeywords: ["कितने बाघ"],
-      answer: "इस समय पूरे रिज़र्व में 44 बाघों को ट्रैक किया जा रहा है।",
+      answer: "इस समय पूरे रिज़र्व में 62 बाघों को ट्रैक किया जा रहा है।",
     },
     {
       id: "village_proximity",
@@ -94,7 +94,7 @@ export const DEMO_QA: Record<Lang, DemoQA[]> = {
     {
       id: "tigers_tracked",
       matchKeywords: ["किती वाघ"],
-      answer: "सध्या संपूर्ण राखीव क्षेत्रात 44 वाघांचा मागोवा घेतला जात आहे.",
+      answer: "सध्या संपूर्ण राखीव क्षेत्रात 62 वाघांचा मागोवा घेतला जात आहे.",
     },
     {
       id: "village_proximity",

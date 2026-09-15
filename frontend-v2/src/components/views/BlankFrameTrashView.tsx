@@ -24,10 +24,12 @@ import {
   type BlankFrame,
 } from "@/lib/blankFrames";
 import type { Stats } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type FrameStatus = "quarantined" | "kept" | "purged";
 
 export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
+  const { t } = useLanguage();
   const [frames] = useState<BlankFrame[]>(MOCK_FRAMES);
   const [statusById, setStatusById] = useState<Record<string, FrameStatus>>({});
   const [threshold, setThreshold] = useState(DEFAULT_CONFIDENCE_THRESHOLD);
@@ -118,8 +120,8 @@ export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
   return (
     <div>
       <TopBar
-        title="Blank Frame Trash"
-        subtitle="Frames auto-classified as blank during ingestion, staged here before permanent removal"
+        title={t("trash.title")}
+        subtitle={t("trash.subtitle")}
         alertCount={stats?.pending_review ?? 0}
       />
 
@@ -128,27 +130,27 @@ export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <StatBlock
             icon={<ImageBroken size={16} />}
-            label="Frames removed"
+            label={t("trash.framesRemoved")}
             value={String(purged.length + quarantined.length)}
           />
           <StatBlock
             icon={<HardDrive size={16} />}
-            label="Space saved"
+            label={t("trash.spaceSaved")}
             value={spaceSavedKb > 0 ? formatBytes(spaceSavedKb) : "—"}
           />
           <StatBlock
             icon={<Clock size={16} />}
-            label="Review time saved"
+            label={t("trash.reviewTimeSaved")}
             value={formatDuration(timeSavedSec)}
           />
           <StatBlock
             icon={<ArrowCounterClockwise size={16} />}
-            label="Restored to dataset"
+            label={t("trash.restoredToDataset")}
             value={String(kept.length)}
           />
           <StatBlock
             icon={<ShieldCheck size={16} />}
-            label="In quarantine"
+            label={t("trash.inQuarantine")}
             value={String(quarantined.length)}
             tone={quarantined.length > 0 ? "caution" : undefined}
           />
@@ -157,11 +159,7 @@ export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
         {/* Explainer */}
         <div className="flex items-start gap-2.5 rounded-xl border border-border bg-surface-sunken p-3.5 text-xs text-muted">
           <WarningCircle size={15} className="mt-0.5 shrink-0" />
-          <span>
-            Frames classified as blank are staged here, not deleted immediately. Review them below,
-            restore anything misclassified back into the working dataset, or purge quarantined frames
-            once you&apos;re confident they&apos;re empty. Purging is permanent.
-          </span>
+          <span>{t("trash.explainer")}</span>
         </div>
 
         {/* Controls */}
@@ -179,13 +177,13 @@ export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
               ) : (
                 <Square size={15} />
               )}
-              Select all quarantined
+              {t("trash.selectAllQuarantined")}
             </button>
 
             <div className="flex items-center gap-2">
               <FunnelSimple size={14} className="text-muted" />
               <label className="font-mono text-[11px] uppercase tracking-wide text-muted">
-                Confidence ≥ {(threshold * 100).toFixed(0)}%
+                {t("trash.confidenceLabel", { pct: (threshold * 100).toFixed(0) })}
               </label>
               <input
                 type="range"
@@ -205,7 +203,7 @@ export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
                 onChange={(e) => setShowPurged(e.target.checked)}
                 className="h-3.5 w-3.5 accent-[var(--accent)]"
               />
-              Show purged frames
+              {t("trash.showPurgedFrames")}
             </label>
           </div>
 
@@ -217,14 +215,14 @@ export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
                   className="flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive-soft px-3 py-1.5 text-sm font-medium text-positive hover:bg-positive-soft/80"
                 >
                   <ArrowCounterClockwise size={14} />
-                  Restore {selectedQuarantinedCount || selected.size} to dataset
+                  {t("trash.restoreCount", { count: selectedQuarantinedCount || selected.size })}
                 </button>
                 <button
                   onClick={requestPurgeSelected}
                   className="flex items-center gap-1.5 rounded-full border border-danger/30 bg-danger-soft px-3 py-1.5 text-sm font-medium text-danger hover:bg-danger-soft/80"
                 >
                   <Trash size={14} />
-                  Purge selected
+                  {t("trash.purgeSelected")}
                 </button>
               </>
             )}
@@ -234,7 +232,7 @@ export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
                 className="flex items-center gap-1.5 rounded-full border border-border-strong px-3 py-1.5 text-sm font-medium text-muted hover:bg-surface-sunken hover:text-danger"
               >
                 <Trash size={14} />
-                Empty trash ({quarantined.length})
+                {t("trash.emptyTrash", { count: quarantined.length })}
               </button>
             )}
           </div>
@@ -244,8 +242,8 @@ export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
         {visible.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border-strong py-16 text-center">
             <ImageBroken size={28} className="text-muted" />
-            <p className="text-sm font-medium text-foreground">No frames match this filter</p>
-            <p className="text-xs text-muted">Lower the confidence threshold or toggle purged frames.</p>
+            <p className="text-sm font-medium text-foreground">{t("trash.noFramesMatch")}</p>
+            <p className="text-xs text-muted">{t("trash.lowerThreshold")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -292,6 +290,7 @@ function FrameCard({
   onRestore: () => void;
   onPurge: () => void;
 }) {
+  const { t } = useLanguage();
   const isPurged = status === "purged";
   const isKept = status === "kept";
 
@@ -313,7 +312,7 @@ function FrameCard({
         {!frame.is_actually_blank && status === "quarantined" && (
           <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-caution px-2 py-0.5 font-mono text-[10px] font-medium text-white">
             <WarningCircle size={10} weight="fill" />
-            Check this
+            {t("trash.checkThis")}
           </span>
         )}
 
@@ -327,17 +326,17 @@ function FrameCard({
         )}
 
         <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 font-mono text-[10px] font-medium text-white backdrop-blur-sm">
-          {(frame.confidence * 100).toFixed(0)}% blank
+          {t("trash.blankPct", { pct: (frame.confidence * 100).toFixed(0) })}
         </span>
 
         {isKept && (
           <span className="absolute bottom-2 left-2 rounded-full bg-positive px-2 py-0.5 font-mono text-[10px] font-medium text-white">
-            Kept
+            {t("trash.kept")}
           </span>
         )}
         {isPurged && (
           <span className="absolute bottom-2 left-2 rounded-full bg-danger px-2 py-0.5 font-mono text-[10px] font-medium text-white">
-            Purged
+            {t("trash.purged")}
           </span>
         )}
       </div>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Clock, CircleDashed } from "@phosphor-icons/react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export interface SightingWindowItem {
   timestamp: string | null;
@@ -34,6 +35,7 @@ export function SightingWindowSlider<T extends SightingWindowItem>({
    * and the item list, given the currently visible (windowed) items. */
   renderAbove?: (visibleItems: T[]) => React.ReactNode;
 }) {
+  const { t } = useLanguage();
   const total = items.length;
   const [startIdx, setStartIdx] = useState<number>(Math.max(0, total - Math.min(DEFAULT_PRESET, total)));
 
@@ -73,11 +75,11 @@ export function SightingWindowSlider<T extends SightingWindowItem>({
         <div className="flex items-center justify-between border-b border-border pb-2.5 mb-3">
           <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-accent">
             <Clock size={13} />
-            <span>Sighting Window</span>
+            <span>{t("sightingSlider.sightingWindow")}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-muted">
-              {visibleCount >= total ? "All sightings" : `Last ${visibleCount} sightings`}
+              {visibleCount >= total ? t("sightingSlider.allSightings") : t("sightingSlider.lastNSightings", { count: visibleCount })}
             </span>
             <span className="rounded-full border border-border-strong bg-surface-sunken px-2 py-0.5 text-[10px] font-semibold text-foreground">
               {visibleCount} / {total}
@@ -118,7 +120,7 @@ export function SightingWindowSlider<T extends SightingWindowItem>({
                   : "border border-border bg-surface-sunken text-muted hover:text-foreground"
               }`}
             >
-              {p === "all" ? "All" : p}
+              {p === "all" ? t("sightingSlider.all") : p}
             </button>
           ))}
         </div>
@@ -134,10 +136,11 @@ export function SightingWindowSlider<T extends SightingWindowItem>({
 }
 
 export function EmptySightingState() {
+  const { t } = useLanguage();
   return (
     <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-border-strong p-8 text-center text-xs font-mono text-muted">
       <CircleDashed size={14} />
-      No sightings recorded for this individual yet.
+      {t("sightingSlider.emptyState")}
     </div>
   );
 }

@@ -74,6 +74,20 @@ export const ASSISTANT_TOOLS: FunctionDeclaration[] = [
       "Get map context: reserve boundaries, villages, water sources, and tiger territories. Use this for questions about proximity to villages, water, or geographic/territory questions.",
     parameters: { type: Type.OBJECT, properties: {} },
   },
+  {
+    name: "get_tiger_associations",
+    description:
+      "Get pairs of tigers ranked by how often they were captured at the same camera station within a short time window of each other - i.e. tigers that are often seen together / share overlapping territory. Use this for questions about which tigers are seen together, overlapping territory, or which tigers could mate (opposite-sex pairs only by default).",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        opposite_sex_only: {
+          type: Type.BOOLEAN,
+          description: "Default true. Set false to include same-sex pairs too (for general 'seen together' questions, not mating).",
+        },
+      },
+    },
+  },
 ];
 
 /**
@@ -165,6 +179,23 @@ export const ASSISTANT_TOOLS_OPENAI = [
       parameters: { type: "object", properties: {} },
     },
   },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_tiger_associations",
+      description:
+        "Get pairs of tigers ranked by how often they were captured at the same camera station within a short time window of each other - i.e. tigers that are often seen together / share overlapping territory. Use this for questions about which tigers are seen together, overlapping territory, or which tigers could mate (opposite-sex pairs only by default).",
+      parameters: {
+        type: "object",
+        properties: {
+          opposite_sex_only: {
+            type: "boolean",
+            description: "Default true. Set false to include same-sex pairs too (for general 'seen together' questions, not mating).",
+          },
+        },
+      },
+    },
+  },
 ];
 
 export async function runAssistantTool(name: string, args: Record<string, unknown>): Promise<unknown> {
@@ -225,7 +256,34 @@ export async function runAssistantTool(name: string, args: Record<string, unknow
     case "get_tiger_detail": {
       const tigerId = typeof args.tiger_id === "string" ? args.tiger_id : "";
       if (!tigerId) return { error: "tiger_id is required" };
-      return api.galleryDetail(tigerId);
+      const detail = await api.galleryDetail(tigerId);
+
+      // Full detail carries every capture (some tigers have 100+) plus a
+      // 512-D embedding vector and pose keypoints - easily blows Groq's
+      // free-tier tokens-per-minute cap. The assistant only needs the
+      // profile and a handful of recent captures for location questions.
+      const captures = Array.isArray(detail.captures) ? detail.captures : [];
+      const sorted = [...captures].sort((a, b) => (b.timestamp ?? "").localeCompare(a.timestamp ?? ""));
+      const recent = sorted.slice(0, 5).map((c) => ({
+        timestamp: c.timestamp,
+        camera_id: c.camera_id ?? c.station,
+        latitude: c.latitude,
+        longitude: c.longitude,
+        zone: c.zone,
+        alert_level: c.alert_level,
+      }));
+
+      return {
+        profile: detail.profile,
+        total_captures: captures.length,
+        last_known_location: recent[0] ?? null,
+        recent_captures: recent,
+      };
+    }
+
+    case "get_tiger_associations": {
+      const oppositeSexOnly = typeof args.opposite_sex_only === "boolean" ? args.opposite_sex_only : true;
+      return api.tigerAssociations(5, oppositeSexOnly);
     }
 
     case "get_gis_context": {

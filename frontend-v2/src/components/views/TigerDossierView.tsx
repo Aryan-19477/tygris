@@ -18,6 +18,7 @@ import { TopBar } from "@/components/TopBar";
 import { PoseSkeletonViewer } from "@/components/PoseSkeletonViewer";
 import { SightingWindowSlider, EmptySightingState } from "@/components/SightingWindowSlider";
 import { api, type GalleryDetail, type Stats } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 const SightingTrailMap = dynamic(
   () => import("@/components/SightingTrailMap").then((mod) => mod.SightingTrailMap),
@@ -32,8 +33,8 @@ function hueForId(id: string) {
   return hash % 360;
 }
 
-function formatDate(iso: string | null) {
-  if (!iso) return "Unknown date";
+function formatDate(iso: string | null, unknownLabel: string) {
+  if (!iso) return unknownLabel;
   try {
     return new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   } catch {
@@ -52,6 +53,7 @@ export function TigerDossierView({
   onBack: () => void;
   onNavigateToMap?: (tigerId: string) => void;
 }) {
+  const { t } = useLanguage();
   const [detail, setDetail] = useState<GalleryDetail | null>(null);
   const [activeTab, setActiveTab] = useState<"pose" | "timeline" | "barcode">("timeline");
 
@@ -93,8 +95,8 @@ export function TigerDossierView({
   return (
     <div className="min-h-full">
       <TopBar
-        title={`Tiger Dossier: ${profile?.name || tigerId}`}
-        subtitle="Sighting history, movement trail, and biometric identification"
+        title={t("dossier.title", { name: profile?.name || tigerId })}
+        subtitle={t("dossier.subtitle")}
         alertCount={stats?.pending_review ?? 0}
         right={
           <div className="flex items-center gap-2">
@@ -104,7 +106,7 @@ export function TigerDossierView({
                 className="flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-xs font-mono font-bold text-accent-foreground shadow-sm hover:opacity-90"
               >
                 <Compass size={14} />
-                <span>Focus on Reserve Map</span>
+                <span>{t("dossier.focusOnMap")}</span>
               </button>
             )}
             <button
@@ -112,7 +114,7 @@ export function TigerDossierView({
               className="flex items-center gap-1.5 rounded-full border border-border px-3.5 py-1.5 text-xs font-medium text-foreground hover:bg-surface"
             >
               <ArrowLeft size={14} />
-              <span>Back</span>
+              <span>{t("dossier.back")}</span>
             </button>
           </div>
         }
@@ -129,7 +131,7 @@ export function TigerDossierView({
                   alt={tigerId}
                   className="h-full w-full object-cover filter contrast-105"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = "/tigers/PTR_TIG_001.jpg";
+                    (e.target as HTMLImageElement).src = "/tigers/T103_F.jpg";
                   }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
@@ -138,7 +140,7 @@ export function TigerDossierView({
                     className="h-2.5 w-2.5 rounded-full ring-2 ring-white/50"
                     style={{ backgroundColor: `hsl(${hue}, 65%, 45%)` }}
                   />
-                  <span>{profile?.territorial_status || "RESIDENT"}</span>
+                  <span>{profile?.territorial_status || t("dossier.residentDefault")}</span>
                 </div>
               </div>
 
@@ -146,16 +148,16 @@ export function TigerDossierView({
                 <div>
                   <div className="font-mono text-xl font-bold text-foreground">{tigerId}</div>
                   <div className="text-xs text-muted font-mono mt-0.5">
-                    {profile?.name || "Pench Resident Individual"} • {profile?.sex || "FEMALE"} • {profile?.age_years?.toFixed(1) || 4.5}y
+                    {profile?.name || t("dossier.defaultProfileName")} • {profile?.sex || "FEMALE"} • {profile?.age_years?.toFixed(1) || 4.5}y
                   </div>
                 </div>
 
                 <div className="space-y-2.5 border-t border-border pt-3 text-xs font-mono">
-                  <BioRow icon={Compass} label="100% MCP Home Range" value={`${profile?.mcp_area_km2 || 38.5} km²`} highlight />
-                  <BioRow icon={Calendar} label="First Recorded" value={firstSeen ? formatDate(firstSeen.timestamp) : "—"} />
-                  <BioRow icon={Calendar} label="Last Recorded" value={lastSeen ? formatDate(lastSeen.timestamp) : "—"} />
-                  <BioRow icon={MapPin} label="Primary station" value={stationHistory[0]?.[0] || "—"} />
-                  <BioRow icon={PawPrint} label="Total sightings" value={`${timeline.length} events`} />
+                  <BioRow icon={Compass} label={t("dossier.homeRange")} value={`${profile?.mcp_area_km2 || 38.5} km²`} highlight />
+                  <BioRow icon={Calendar} label={t("dossier.firstRecorded")} value={firstSeen ? formatDate(firstSeen.timestamp, t("common.unknownDate")) : "—"} />
+                  <BioRow icon={Calendar} label={t("dossier.lastRecorded")} value={lastSeen ? formatDate(lastSeen.timestamp, t("common.unknownDate")) : "—"} />
+                  <BioRow icon={MapPin} label={t("dossier.primaryStation")} value={stationHistory[0]?.[0] || "—"} />
+                  <BioRow icon={PawPrint} label={t("dossier.totalSightings")} value={t("dossier.totalSightingsValue", { count: timeline.length })} />
                 </div>
               </div>
             </div>
@@ -163,7 +165,7 @@ export function TigerDossierView({
             {stationHistory.length > 0 && (
               <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
                 <h3 className="mb-3 font-mono text-[11px] uppercase tracking-wider text-muted font-bold">
-                  Camera station encounters
+                  {t("dossier.cameraEncounters")}
                 </h3>
                 <div className="space-y-2.5">
                   {stationHistory.slice(0, 5).map(([station, count]) => {
@@ -172,7 +174,7 @@ export function TigerDossierView({
                       <div key={station}>
                         <div className="mb-1 flex items-center justify-between font-mono text-xs">
                           <span className="font-bold text-foreground">{station}</span>
-                          <span className="text-muted">{count} captures</span>
+                          <span className="text-muted">{t("dossier.capturesCount", { count })}</span>
                         </div>
                         <div className="h-1.5 overflow-hidden rounded-full bg-surface-sunken">
                           <div className="h-full rounded-full bg-accent" style={{ width: `${(count / max) * 100}%` }} />
@@ -194,7 +196,7 @@ export function TigerDossierView({
                 }`}
               >
                 <Clock size={14} />
-                <span>Sighting Timeline ({timeline.length})</span>
+                <span>{t("dossier.tabTimeline", { count: timeline.length })}</span>
               </button>
               <button
                 onClick={() => setActiveTab("pose")}
@@ -203,7 +205,7 @@ export function TigerDossierView({
                 }`}
               >
                 <Sparkle size={14} />
-                <span>Pose &amp; flank</span>
+                <span>{t("dossier.tabPose")}</span>
               </button>
               <button
                 onClick={() => setActiveTab("barcode")}
@@ -212,7 +214,7 @@ export function TigerDossierView({
                 }`}
               >
                 <Barcode size={14} />
-                <span>Stripe signature</span>
+                <span>{t("dossier.tabBarcode")}</span>
               </button>
             </div>
 
@@ -243,10 +245,10 @@ export function TigerDossierView({
                           />
                           <div>
                             <div className="font-mono text-xs font-bold text-foreground">
-                              {c.camera_id || c.station || "Unknown station"}
+                              {c.camera_id || c.station || t("common.unknownStation")}
                             </div>
                             <div className="text-[11px] font-mono text-muted mt-0.5">
-                              {formatDate(c.timestamp)} • {c.zone || "CORE"} Zone • {c.flank_side || "Left"} Flank
+                              {formatDate(c.timestamp, t("common.unknownDate"))} • {t("dossier.zoneLabel", { zone: c.zone || "CORE" })} • {t("dossier.flankLabel", { flank: c.flank_side || "Left" })}
                             </div>
                           </div>
                         </div>
@@ -259,7 +261,7 @@ export function TigerDossierView({
                               : "bg-positive-soft text-positive border border-positive/40"
                           }`}
                         >
-                          {alertLevel}
+                          {isCrit ? t("attention.urgencyCritical") : isCaut ? t("attention.urgencyCaution") : t("common.safe")}
                         </span>
                       </motion.div>
                     );
@@ -271,7 +273,7 @@ export function TigerDossierView({
             {activeTab === "pose" && (
               <div className="space-y-4">
                 <div className="text-xs font-mono text-muted">
-                  Anatomical keypoint alignment &amp; flank orientation for the most recent capture.
+                  {t("dossier.poseExplainer")}
                 </div>
                 <PoseSkeletonViewer
                   imageSrc={coverImage}
@@ -292,10 +294,10 @@ export function TigerDossierView({
               <div className="rounded-2xl border border-border bg-surface p-6 space-y-5 shadow-sm">
                 <div>
                   <div className="font-mono text-sm font-bold text-foreground">
-                    {detail?.embedding?.dim ?? 512}-Dimensional Biometric Signature
+                    {t("dossier.barcodeTitle", { dim: detail?.embedding?.dim ?? 512 })}
                   </div>
                   <div className="text-xs text-muted font-mono mt-1">
-                    L2-normalized representation vector extracted by a triplet-loss fine-tuned ResNet50 embedding model (97.5% rank-1 accuracy).
+                    {t("dossier.barcodeDesc")}
                   </div>
                 </div>
 
@@ -318,24 +320,26 @@ export function TigerDossierView({
                     <div className="flex items-center justify-between text-xs font-mono text-muted pt-2 border-t border-border">
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-positive" />
-                        <span>Positive activation</span>
+                        <span>{t("dossier.positiveActivation")}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full bg-accent-strong" />
-                        <span>Negative suppression</span>
+                        <span>{t("dossier.negativeSuppression")}</span>
                       </div>
-                      <span>L2 Norm: {(detail.embedding.l2_norm ?? 0).toFixed(3)}</span>
+                      <span>{t("dossier.l2Norm", { value: (detail.embedding.l2_norm ?? 0).toFixed(3) })}</span>
                     </div>
                     <div className="text-[11px] font-mono text-muted">
-                      Extracted from {detail.embedding.num_source_entries} reference
-                      {detail.embedding.num_source_entries === 1 ? " photo" : " photos"} enrolled for this individual.
+                      {t("dossier.extractedFrom", {
+                        count: detail.embedding.num_source_entries ?? 0,
+                        unit: detail.embedding.num_source_entries === 1 ? t("dossier.photoSingular") : t("dossier.photoPlural"),
+                      })}
                     </div>
                   </>
                 ) : (
                   <div className="rounded-xl border border-dashed border-border-strong p-6 text-center text-xs font-mono text-muted space-y-2">
-                    <div className="font-bold text-foreground">No embedding available for this individual</div>
+                    <div className="font-bold text-foreground">{t("dossier.noEmbedding")}</div>
                     <div className="leading-relaxed">
-                      {detail?.embedding?.detail || "This tiger has no enrolled embedding, and the embedding status could not be determined."}
+                      {detail?.embedding?.detail || t("dossier.noEmbeddingDetailFallback")}
                     </div>
                   </div>
                 )}

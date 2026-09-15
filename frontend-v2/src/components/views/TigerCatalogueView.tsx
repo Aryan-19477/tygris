@@ -9,6 +9,7 @@ import {
 } from "@phosphor-icons/react";
 import { TopBar } from "@/components/TopBar";
 import { api, type GalleryIndividual, type Stats } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type FilterKey = "all" | "recent" | "multi-station";
 
@@ -19,6 +20,7 @@ export function TigerCatalogueView({
   stats: Stats | null;
   onOpenTiger: (tigerId: string) => void;
 }) {
+  const { t } = useLanguage();
   const [individuals, setIndividuals] = useState<GalleryIndividual[] | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -47,8 +49,8 @@ export function TigerCatalogueView({
   return (
     <div>
       <TopBar
-        title="Tiger Catalogue"
-        subtitle={individuals ? `${individuals.length} identified individuals` : "Loading catalogue..."}
+        title={t("catalogue.title")}
+        subtitle={individuals ? t("catalogue.subtitleCount", { count: individuals.length }) : t("catalogue.loadingCatalogue")}
         alertCount={stats?.pending_review ?? 0}
         right={
           <div className="relative">
@@ -56,7 +58,7 @@ export function TigerCatalogueView({
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search ID"
+              placeholder={t("catalogue.searchPlaceholder")}
               className="w-56 rounded-full border border-border bg-surface py-2 pl-9 pr-4 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
             />
           </div>
@@ -65,17 +67,17 @@ export function TigerCatalogueView({
 
       <div className="px-8 py-6">
         <div className="mb-6 flex flex-wrap items-center gap-2">
-          <FilterPill active={filter === "all"} onClick={() => setFilter("all")}>All</FilterPill>
-          <FilterPill active={filter === "recent"} onClick={() => setFilter("recent")}>Recently seen</FilterPill>
-          <FilterPill active={filter === "multi-station"} onClick={() => setFilter("multi-station")}>Multiple stations</FilterPill>
+          <FilterPill active={filter === "all"} onClick={() => setFilter("all")}>{t("catalogue.filterAll")}</FilterPill>
+          <FilterPill active={filter === "recent"} onClick={() => setFilter("recent")}>{t("catalogue.filterRecent")}</FilterPill>
+          <FilterPill active={filter === "multi-station"} onClick={() => setFilter("multi-station")}>{t("catalogue.filterMulti")}</FilterPill>
         </div>
 
         {!filtered && <TigerGridSkeleton />}
 
         {filtered && filtered.length === 0 && (
           <div className="flex min-h-70 flex-col items-center justify-center rounded-2xl border border-dashed border-border-strong text-center">
-            <p className="text-[15px] font-medium text-foreground">No individuals match</p>
-            <p className="mt-1 text-sm text-muted">Try a different filter</p>
+            <p className="text-[15px] font-medium text-foreground">{t("catalogue.noMatch")}</p>
+            <p className="mt-1 text-sm text-muted">{t("catalogue.tryDifferentFilter")}</p>
           </div>
         )}
 
@@ -107,6 +109,7 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
 }
 
 function TigerCard({ individual, index, onSelect }: { individual: GalleryIndividual; index: number; onSelect: () => void }) {
+  const { t } = useLanguage();
   return (
     <motion.button
       onClick={onSelect}
@@ -134,11 +137,11 @@ function TigerCard({ individual, index, onSelect }: { individual: GalleryIndivid
         <div className="mt-2 flex items-center justify-between border-t border-border pt-2.5 text-xs text-muted">
           <span className="flex items-center gap-1">
             <Camera size={12} />
-            {individual.num_captures} captures
+            {t("catalogue.captures", { count: individual.num_captures })}
           </span>
           <span className="flex items-center gap-1">
             <MapPin size={12} />
-            {(individual.stations ?? []).length} stations
+            {t("catalogue.stationsCount", { count: (individual.stations ?? []).length })}
           </span>
         </div>
       </div>

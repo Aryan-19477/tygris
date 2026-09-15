@@ -5,8 +5,10 @@ import { MapPin, MagnifyingGlass, CheckCircle, Camera, Info } from "@phosphor-ic
 import { TopBar } from "@/components/TopBar";
 import { IdentifyCapture } from "@/components/IdentifyCapture";
 import { api, type Stats, type GISStation } from "@/lib/api";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export function IdentifyView({ stats }: { stats: Stats | null }) {
+  const { t } = useLanguage();
   const [stations, setStations] = useState<GISStation[]>([]);
   const [station, setStation] = useState<GISStation | null>(null);
   const [query, setQuery] = useState("");
@@ -31,8 +33,8 @@ export function IdentifyView({ stats }: { stats: Stats | null }) {
   return (
     <div>
       <TopBar
-        title="Identify"
-        subtitle="Upload a camera trap photo for on-the-spot tiger identification"
+        title={t("identify.title")}
+        subtitle={t("identify.subtitle")}
         alertCount={stats?.pending_review ?? 0}
       />
 
@@ -40,20 +42,20 @@ export function IdentifyView({ stats }: { stats: Stats | null }) {
         <div className="border-r border-border px-6 py-6">
           <div className="mb-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-muted">
             <MapPin size={13} />
-            <span>Camera station</span>
+            <span>{t("identify.cameraStation")}</span>
           </div>
 
           {station ? (
             <div className="mb-4 flex items-center justify-between rounded-xl border border-accent/40 bg-accent-soft p-3.5">
               <div>
                 <div className="font-mono text-sm font-semibold text-foreground">{station.camera_id}</div>
-                <div className="text-xs text-muted">{station.zone} — {station.sub_region || "Unknown range"}</div>
+                <div className="text-xs text-muted">{station.zone} — {station.sub_region || t("common.unknownRange")}</div>
               </div>
               <button
                 onClick={() => setStation(null)}
                 className="rounded-full border border-border-strong bg-surface px-3 py-1 text-xs font-medium text-foreground hover:bg-surface-sunken"
               >
-                Change
+                {t("identify.change")}
               </button>
             </div>
           ) : (
@@ -63,7 +65,7 @@ export function IdentifyView({ stats }: { stats: Stats | null }) {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search station ID or range..."
+                  placeholder={t("identify.searchPlaceholder")}
                   className="w-full rounded-xl border border-border bg-surface py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
                 />
               </div>
@@ -87,13 +89,13 @@ export function IdentifyView({ stats }: { stats: Stats | null }) {
                         s.operational_status === "OPERATIONAL" ? "bg-positive-soft text-positive" : "bg-danger-soft text-danger"
                       }`}
                     >
-                      {s.operational_status === "OPERATIONAL" ? "ONLINE" : "OFFLINE"}
+                      {s.operational_status === "OPERATIONAL" ? t("common.online") : t("common.offline")}
                     </span>
                   </button>
                 ))}
                 {filtered.length === 0 && (
                   <div className="rounded-xl border border-dashed border-border-strong p-6 text-center text-xs text-muted">
-                    No stations match &quot;{query}&quot;
+                    {t("identify.noStationsMatch", { query })}
                   </div>
                 )}
               </div>
@@ -102,17 +104,14 @@ export function IdentifyView({ stats }: { stats: Stats | null }) {
                 onClick={() => setStation(null)}
                 className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border-strong px-3 py-2 text-xs font-medium text-muted hover:border-accent/40 hover:text-foreground"
               >
-                Skip — not tied to a specific station
+                {t("identify.skip")}
               </button>
             </>
           )}
 
           <div className="mt-6 flex items-start gap-2 rounded-xl bg-surface-sunken p-3.5 text-xs text-muted">
             <Info size={14} className="mt-0.5 shrink-0" />
-            <span>
-              Tying a capture to its station records the sighting at that camera&apos;s real coordinates.
-              Without one, the sighting is logged without a location.
-            </span>
+            <span>{t("identify.infoText")}</span>
           </div>
         </div>
 
@@ -121,7 +120,7 @@ export function IdentifyView({ stats }: { stats: Stats | null }) {
             <div className="mb-4 flex items-center gap-2 text-xs text-muted">
               <CheckCircle size={14} className="text-positive" />
               <span>
-                Uploading for <span className="font-mono font-semibold text-foreground">{station.camera_id}</span>
+                {t("identify.uploadingFor")} <span className="font-mono font-semibold text-foreground">{station.camera_id}</span>
               </span>
             </div>
           )}

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Eye, EyeSlash, Crosshair, Sparkle, Tag } from "@phosphor-icons/react";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 export interface Keypoint {
   id: number;
@@ -45,13 +46,14 @@ export function PoseSkeletonViewer({
   height = 360,
   className = "",
 }: PoseSkeletonProps) {
+  const { t } = useLanguage();
   const [showSkeleton, setShowSkeleton] = useState(true);
   const [showLabels, setShowLabels] = useState(false);
   const [selectedJoint, setSelectedJoint] = useState<Keypoint | null>(null);
 
   const activeKeypoints = keypoints && keypoints.length > 0 ? keypoints : [];
   const kpMap = new Map(activeKeypoints.map((k) => [k.id, k]));
-  const defaultImage = imageSrc || "/tigers/PTR_TIG_001.jpg";
+  const defaultImage = imageSrc || "/tigers/T103_F.jpg";
 
   return (
     <div className={`relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl ${className}`}>
@@ -59,10 +61,10 @@ export function PoseSkeletonViewer({
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-0.5 text-xs font-bold text-emerald-300 border border-emerald-500/30">
             <Sparkle size={13} weight="fill" />
-            <span>15-Point ATRW Topology</span>
+            <span>{t("pose.topologyBadge")}</span>
           </div>
           <span className="font-mono text-xs text-zinc-300">
-            Flank: <span className="font-bold text-white">{flankSide} Flank</span> ({Math.round(confidence * 100)}% conf)
+            {t("pose.flankLabel", { side: flankSide, pct: Math.round(confidence * 100) })}
           </span>
         </div>
 
@@ -76,7 +78,7 @@ export function PoseSkeletonViewer({
             }`}
           >
             {showSkeleton ? <Eye size={13} /> : <EyeSlash size={13} />}
-            <span>Skeleton</span>
+            <span>{t("pose.skeleton")}</span>
           </button>
 
           <button
@@ -88,7 +90,7 @@ export function PoseSkeletonViewer({
             }`}
           >
             <Tag size={13} />
-            <span>Labels</span>
+            <span>{t("pose.labels")}</span>
           </button>
         </div>
       </div>
