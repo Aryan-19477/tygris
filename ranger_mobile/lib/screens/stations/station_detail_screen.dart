@@ -41,19 +41,27 @@ class StationDetailScreen extends ConsumerWidget {
           children: [
             Row(
               children: [
-                StatusPill(
-                  label: l10n.t(stationStatusLabelKey(s.operationalStatus)),
-                  color: stationStatusColor(s.operationalStatus),
+                Flexible(
+                  child: StatusPill(
+                    label: l10n.t(stationStatusLabelKey(s.operationalStatus)),
+                    color: stationStatusColor(s.operationalStatus),
+                  ),
                 ),
                 const Spacer(),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    ref.read(mapFocusStationIdProvider.notifier).state = s.cameraId;
-                    ref.read(bottomNavIndexProvider.notifier).state = 1;
-                    context.go('/');
-                  },
-                  icon: const Icon(Icons.navigation_outlined, size: 18),
-                  label: Text(l10n.t('stations.navigate')),
+                Flexible(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      ref.read(mapFocusStationIdProvider.notifier).state = s.cameraId;
+                      ref.read(bottomNavIndexProvider.notifier).state = 1;
+                      context.go('/');
+                    },
+                    icon: const Icon(Icons.navigation_outlined, size: 18),
+                    label: Text(
+                      l10n.t('stations.navigate'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -138,8 +146,16 @@ class StationDetailScreen extends ConsumerWidget {
       child: Row(
         children: [
           Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-          const Spacer(),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
+          ),
         ],
       ),
     );

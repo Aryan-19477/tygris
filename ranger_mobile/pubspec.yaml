@@ -59,3 +59,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/gis/pench_web_bundle.json

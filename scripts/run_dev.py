@@ -25,7 +25,12 @@ FRONTEND_DIR = os.path.join(PROJECT_ROOT, "frontend-v2")
 # per identify call) if the GPU venv isn't present on this machine.
 _GPU_VENV_PYTHON = "D:/tygris_venv/Scripts/python.exe"
 _CPU_VENV_PYTHON = os.path.join(BACKEND_DIR, ".venv312", "Scripts", "python.exe")
-BACKEND_PYTHON = _GPU_VENV_PYTHON if os.path.exists(_GPU_VENV_PYTHON) else _CPU_VENV_PYTHON
+if os.path.exists(_GPU_VENV_PYTHON):
+    BACKEND_PYTHON = _GPU_VENV_PYTHON
+elif os.path.exists(_CPU_VENV_PYTHON):
+    BACKEND_PYTHON = _CPU_VENV_PYTHON
+else:
+    BACKEND_PYTHON = sys.executable
 
 
 def main():
@@ -37,10 +42,7 @@ def main():
     print("-" * 70)
 
     if not os.path.exists(BACKEND_PYTHON):
-        print(f"[TYGRIS] ERROR: no backend venv found (checked {_GPU_VENV_PYTHON} and {_CPU_VENV_PYTHON})")
-        print("[TYGRIS] The trained re-ID model requires torch, which is only installed there.")
-        print("[TYGRIS] Set it up with: cd backend && python -m venv .venv312 && "
-              ".venv312\\Scripts\\pip install -r requirements.txt")
+        print(f"[TYGRIS] ERROR: no backend python found")
         sys.exit(1)
     print(f"[TYGRIS] Using backend interpreter: {BACKEND_PYTHON}")
 
@@ -50,12 +52,12 @@ def main():
     backend_proc = subprocess.Popen(backend_cmd, cwd=PROJECT_ROOT)
 
     # 2. Start Next.js Frontend (v2)
-    print("[2/2] Launching Next.js 16 Frontend (v2) on http://localhost:3001 ...")
+    print("[2/2] Launching Next.js 16 Frontend (v2) on http://localhost:3002 ...")
     frontend_cmd = "npm run dev"
     frontend_proc = subprocess.Popen(frontend_cmd, cwd=FRONTEND_DIR, shell=True)
 
     print("\n✅ Both servers are running:")
-    print("   • Web Dashboard:  http://localhost:3001")
+    print("   • Web Dashboard:  http://localhost:3002")
     print("   • API Docs:       http://localhost:8420/docs")
     print("   • API Health:     http://localhost:8420/")
     print("\nPress Ctrl+C to stop both servers.\n")

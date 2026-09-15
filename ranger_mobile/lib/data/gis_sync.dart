@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/local_store.dart';
@@ -56,6 +58,13 @@ class GisSyncService {
   static const _cacheKey = 'gis_bundle_cache_v1';
   static const _lastSyncedKey = 'gis_bundle_last_synced_v1';
 
+  /// Bundled inside the app so the reserve boundaries/ranges/camera
+  /// stations are present from the very first launch, with zero network
+  /// and no prior cache — this is the real Pench GIS dataset
+  /// (`backend/data/gis/pench_web_bundle.json`), copied verbatim to
+  /// `assets/gis/pench_web_bundle.json` and registered in pubspec.yaml.
+  static const _bundledAssetPath = 'assets/gis/pench_web_bundle.json';
+
   final Ref _ref;
   final LocalStore _store;
   final GisApiClient _api;
@@ -77,6 +86,28 @@ class GisSyncService {
         bundle: GISMapBundle.fromJson(cached),
         lastSyncedAt: lastSyncedRaw != null ? DateTime.tryParse(lastSyncedRaw) : null,
       );
+    }
+  }
+
+  /// Loads the bundled-with-the-app asset copy of the real reserve GIS
+  /// dataset as the offline floor, but only if nothing better is already
+  /// in place (a previously cached live sync, from [_restoreCached]) — the
+  /// bundled asset must never clobber a newer/live bundle. Called once at
+  /// boot, awaited *before* `runApp` so the map is never empty on a
+  /// fresh install with no network and no prior cache: no HTTP call here,
+  /// so it can't hang startup on a dead backend.
+  Future<void> loadBundledAssetIfNeeded() async {
+    if (_state.bundle != null) return;
+    try {
+      final raw = await rootBundle.loadString(_bundledAssetPath);
+      final bundle = GISMapBundle.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      await _ref.read(stationRepositoryProvider).replaceAll(bundle.stations);
+      _emit(GisSyncState(status: GisSyncStatus.loaded, bundle: bundle, lastSyncedAt: null));
+    } catch (e) {
+      // Should never happen (it's bundled with the app), but never let a
+      // packaging mishap crash startup — the app just stays on whatever
+      // mock-seeded stations exist until a live sync succeeds.
+      _emit(_state.copyWith(status: GisSyncStatus.error, errorMessage: e.toString()));
     }
   }
 

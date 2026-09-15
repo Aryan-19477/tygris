@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/connectivity_status.dart';
 import '../core/theme.dart';
 import '../data/gis_sync.dart';
 import '../l10n/app_localizations.dart';
+import 'common.dart';
 
 /// Small pill showing whether camera-station/GIS data on screen came from
 /// the real backend just now, is cached from an earlier sync, or a sync is
@@ -63,11 +65,24 @@ class GisSyncBanner extends ConsumerWidget {
                 ? SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: color))
                 : Icon(icon, size: 14, color: color),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             if (stationCount != null && stationCount! > 0) ...[
               const SizedBox(width: 6),
-              Text('· ${l10n.t('gis.stationsCount', {'count': '$stationCount'})}',
-                  style: const TextStyle(fontSize: 11, color: AppColors.muted)),
+              Flexible(
+                child: Text(
+                  '· ${l10n.t('gis.stationsCount', {'count': '$stationCount'})}',
+                  style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
             const SizedBox(width: 4),
             const Icon(Icons.refresh_rounded, size: 14, color: AppColors.muted),
@@ -83,5 +98,25 @@ class GisSyncBanner extends ConsumerWidget {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${diff.inDays}d ago';
+  }
+}
+
+/// Small persistent pill telling the ranger whether the map basemap under
+/// their feet right now is the live OSM tile layer (online) or the
+/// offline vector-only canvas (no network) — same [StatusPill] look as
+/// [GisSyncBanner] so the two read as one family of "data state" chips.
+class OfflineMapModeChip extends ConsumerWidget {
+  const OfflineMapModeChip({super.key, required this.l10n});
+
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isOnline = ref.watch(isOnlineProvider).value ?? true;
+    return StatusPill(
+      label: isOnline ? l10n.t('map.onlineMode') : l10n.t('map.offlineMode'),
+      color: isOnline ? AppColors.synced : AppColors.offline,
+      icon: isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
+    );
   }
 }

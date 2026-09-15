@@ -4,14 +4,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
+import '../../core/connectivity_status.dart';
 import '../../core/observation_meta.dart';
 import '../../core/theme.dart';
+import '../../data/gis_sync.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/observation.dart';
 import '../../models/patrol.dart';
 import '../../services/active_patrol_controller.dart';
 import '../../widgets/common.dart';
+import '../../widgets/gis_sync_banner.dart';
+import '../../widgets/reserve_map_layers.dart';
 
+/// Full-bleed live-tracking HUD shown while a patrol is in progress.
+///
+/// Visual language: the map fills the entire screen and every control —
+/// identity badge, stats, quick actions — floats over it as a translucent
+/// "glass" circle/pill/panel, echoing a drone-controller-style navigation
+/// HUD. Every control here maps 1:1 onto functionality this screen already
+/// had before the restyle (close/end/pause/resume/quick-log/offline-mode/
+/// recenter) — nothing new was invented beyond a live speed readout, which
+/// falls out of the GPS route this screen already tracks.
 class ActivePatrolScreen extends ConsumerStatefulWidget {
   const ActivePatrolScreen({super.key});
 
@@ -26,6 +39,8 @@ class _ActivePatrolScreenState extends ConsumerState<ActivePatrolScreen> {
   Widget build(BuildContext context) {
     final l10n = ref.watch(appLocalizationsProvider);
     final patrol = ref.watch(activePatrolControllerProvider);
+    final bundle = ref.watch(gisSyncStateProvider).value?.bundle;
+    final isOnline = ref.watch(isOnlineProvider).value ?? true;
 
     if (patrol == null) {
       // Defensive fallback (e.g. hot-restart lost state) — bounce home.
@@ -40,72 +55,126 @@ class _ActivePatrolScreenState extends ConsumerState<ActivePatrolScreen> {
     final isPaused = patrol.status == PatrolStatus.paused;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: center,
-              initialZoom: 14,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.tygris.ranger',
+          Positioned.fill(
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: center,
+                initialZoom: 16,
+                backgroundColor: isOnline ? const Color(0xFFE0E0E0) : AppColors.mapOfflineBase,
               ),
-              if (points.length > 1)
-                PolylineLayer(polylines: [
-                  Polyline(points: points, strokeWidth: 4, color: AppColors.accent),
-                ]),
-              if (points.isNotEmpty)
-                MarkerLayer(markers: [
-                  Marker(
-                    point: points.last,
-                    width: 26,
-                    height: 26,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.accent,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: const [BoxShadow(color: AppColors.shadowTintStrong, blurRadius: 8)],
+              children: [
+                if (reserveTileLayer(isOnline) != null) reserveTileLayer(isOnline)!,
+                ...reserveBoundaryLayers(bundle),
+                rangeLabelMarkers(bundle),
+                if (points.length > 1)
+                  PolylineLayer(polylines: [
+                    Polyline(points: points, strokeWidth: 4, color: AppColors.accent),
+                  ]),
+                if (points.isNotEmpty)
+                  MarkerLayer(markers: [
+                    Marker(
+                      point: points.last,
+                      width: 26,
+                      height: 26,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.accent,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: const [BoxShadow(color: AppColors.shadowTintStrong, blurRadius: 8)],
+                        ),
                       ),
                     ),
-                  ),
-                ]),
-            ],
+                  ]),
+              ],
+            ),
           ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpace.md),
-              child: Row(
-                children: [
-                  _RoundIconButton(
-                    icon: Icons.close_rounded,
-                    onTap: () => _confirmClose(context, l10n),
-                  ),
-                  const Spacer(),
-                  StatusPill(
-                    label: isPaused ? l10n.t('patrol.paused') : l10n.t('patrol.active'),
-                    color: isPaused ? AppColors.caution : AppColors.positive,
-                    icon: isPaused ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  ),
-                ],
+
+          // Top row: identity badge (left) + close (right) — both floating
+          // directly over the map, no app bar / no bounding card.
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _IdentityBadge(patrol: patrol, isPaused: isPaused, l10n: l10n),
+                    const Spacer(),
+                    _GlassIconButton(
+                      icon: Icons.close_rounded,
+                      onTap: () => _confirmClose(context, l10n),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
+
+          // Left edge: vertical stack of floating circular controls.
           Positioned(
-            left: AppSpace.md,
-            right: AppSpace.md,
-            bottom: AppSpace.md,
+            left: AppSpace.lg,
+            top: 0,
+            bottom: 0,
+            child: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _GlassIconButton(
+                        icon: Icons.my_location_rounded,
+                        onTap: () => _recenter(points),
+                      ),
+                      const SizedBox(height: AppSpace.md),
+                      _GlassOfflineBadge(l10n: l10n, isOnline: isOnline),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Right edge: borderless stat readouts, drone-HUD typography.
+          Positioned(
+            right: AppSpace.lg,
+            top: 0,
+            bottom: 0,
+            child: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  child: _StatsRail(patrol: patrol, l10n: l10n),
+                ),
+              ),
+            ),
+          ),
+
+          // Bottom-center: pause/resume + big end-patrol stop + quick-log.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: AppSpace.xl,
             child: SafeArea(
               top: false,
-              child: _BottomPanel(l10n: l10n, patrol: patrol),
+              child: _BottomActionCluster(l10n: l10n, patrol: patrol),
             ),
           ),
         ],
       ),
     );
+  }
+
+  void _recenter(List<ll.LatLng> points) {
+    if (points.isEmpty) return;
+    _mapController.move(points.last, _mapController.camera.zoom);
   }
 
   Future<void> _confirmClose(BuildContext context, AppLocalizations l10n) async {
@@ -136,34 +205,120 @@ class _ActivePatrolScreenState extends ConsumerState<ActivePatrolScreen> {
   }
 }
 
-class _RoundIconButton extends StatelessWidget {
-  const _RoundIconButton({required this.icon, required this.onTap});
+/// Translucent white circular "glass" button — the floating-HUD equivalent
+/// of the old bordered [_RoundIconButton].
+class _GlassIconButton extends StatelessWidget {
+  const _GlassIconButton({
+    required this.icon,
+    required this.onTap,
+    this.color,
+  });
+
   final IconData icon;
   final VoidCallback onTap;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     return PressableScale(
       onTap: onTap,
       child: Container(
-        width: 44,
-        height: 44,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: Colors.white.withValues(alpha: 0.85),
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.border),
-          boxShadow: const [BoxShadow(color: AppColors.shadowTint, blurRadius: 8)],
+          boxShadow: const [BoxShadow(color: AppColors.shadowTintStrong, blurRadius: 12)],
         ),
-        child: Icon(icon, color: AppColors.foreground),
+        child: Icon(icon, color: color ?? AppColors.foreground),
       ),
     );
   }
 }
 
-class _BottomPanel extends ConsumerWidget {
-  const _BottomPanel({required this.l10n, required this.patrol});
-  final AppLocalizations l10n;
+/// Top-left status badge — patrol type icon + method, with a small
+/// active/paused indicator dot overlapping the corner (the HUD-reference's
+/// "verified" checkmark, repurposed for a status this app actually has).
+class _IdentityBadge extends StatelessWidget {
+  const _IdentityBadge({required this.patrol, required this.isPaused, required this.l10n});
   final Patrol patrol;
+  final bool isPaused;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.85),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            boxShadow: const [BoxShadow(color: AppColors.shadowTintStrong, blurRadius: 12)],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(patrolTypeIcon(patrol.patrolType.name), size: 18, color: AppColors.accent),
+              const SizedBox(width: 8),
+              Text(
+                l10n.t('patrol.${patrol.method.name}'),
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.foreground),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          right: -4,
+          top: -4,
+          child: Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: isPaused ? AppColors.caution : AppColors.positive,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Small pill echoing [OfflineMapModeChip] but sized/styled to sit inside
+/// the left-edge floating-button column rather than the old app-bar row.
+class _GlassOfflineBadge extends StatelessWidget {
+  const _GlassOfflineBadge({required this.l10n, required this.isOnline});
+  final AppLocalizations l10n;
+  final bool isOnline;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.85),
+        shape: BoxShape.circle,
+        boxShadow: const [BoxShadow(color: AppColors.shadowTintStrong, blurRadius: 12)],
+      ),
+      child: Icon(
+        isOnline ? Icons.wifi_rounded : Icons.wifi_off_rounded,
+        color: isOnline ? AppColors.synced : AppColors.offline,
+      ),
+    );
+  }
+}
+
+/// Right-edge stat readouts — no card/background, just the reference HUD's
+/// "small light label above a large bold number" typography, laid over the
+/// map with a text shadow for legibility.
+class _StatsRail extends StatelessWidget {
+  const _StatsRail({required this.patrol, required this.l10n});
+  final Patrol patrol;
+  final AppLocalizations l10n;
 
   String _fmtDuration(int seconds) {
     final h = seconds ~/ 3600;
@@ -173,66 +328,185 @@ class _BottomPanel extends ConsumerWidget {
     return '${m}m ${s}s';
   }
 
+  /// Live speed derived from the last two GPS fixes already recorded on the
+  /// route — no new tracking state, just distance/time already on hand
+  /// (distance via `latlong2`'s `Distance`, the same package already used
+  /// for map coordinates on this screen).
+  double? _currentSpeedKmh() {
+    final route = patrol.route;
+    if (route.length < 2) return null;
+    final a = route[route.length - 2];
+    final b = route[route.length - 1];
+    final dtHours = (b.timestampMs - a.timestampMs) / 3600000.0;
+    if (dtHours <= 0) return null;
+    final distKm = const ll.Distance().as(
+          ll.LengthUnit.Kilometer,
+          ll.LatLng(a.lat, a.lng),
+          ll.LatLng(b.lat, b.lng),
+        );
+    final speed = distKm / dtHours;
+    return speed.isFinite ? speed : null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final paceMinPerKm = patrol.distanceKm > 0.05
+        ? (patrol.durationSeconds / 60) / patrol.distanceKm
+        : 0.0;
+    final speedKmh = patrol.status == PatrolStatus.active ? _currentSpeedKmh() : null;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (speedKmh != null) ...[
+          _HudStat(label: l10n.t('patrol.speed'), value: speedKmh.toStringAsFixed(1), unit: 'km/h'),
+          const SizedBox(height: AppSpace.lg),
+        ],
+        _HudStat(
+          label: l10n.t('patrol.distance'),
+          value: patrol.distanceKm.toStringAsFixed(2),
+          unit: l10n.t('common.km'),
+        ),
+        const SizedBox(height: AppSpace.lg),
+        _HudStat(label: l10n.t('patrol.duration'), value: _fmtDuration(patrol.durationSeconds), unit: ''),
+        const SizedBox(height: AppSpace.lg),
+        _HudStat(
+          label: l10n.t('patrol.pace'),
+          value: paceMinPerKm > 0 ? paceMinPerKm.toStringAsFixed(1) : '—',
+          unit: paceMinPerKm > 0 ? 'min/km' : '',
+        ),
+      ],
+    );
+  }
+}
+
+class _HudStat extends StatelessWidget {
+  const _HudStat({required this.label, required this.value, required this.unit});
+  final String label;
+  final String value;
+  final String unit;
+
+  static const _shadow = [Shadow(color: Colors.black45, blurRadius: 6)];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 0.4,
+            shadows: _shadow,
+          ),
+        ),
+        const SizedBox(height: 2),
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  shadows: _shadow,
+                ),
+              ),
+              if (unit.isNotEmpty)
+                TextSpan(
+                  text: ' $unit',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    shadows: _shadow,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Bottom-center action cluster: pause/resume (smaller, left) + end patrol
+/// (large red circle, center) + quick-log (right) — the same three actions
+/// the old bottom panel exposed, now floating over the map.
+class _BottomActionCluster extends ConsumerWidget {
+  const _BottomActionCluster({required this.l10n, required this.patrol});
+  final AppLocalizations l10n;
+  final Patrol patrol;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(activePatrolControllerProvider.notifier);
     final isPaused = patrol.status == PatrolStatus.paused;
-    final paceMinPerKm = patrol.distanceKm > 0.05
-        ? (patrol.durationSeconds / 60) / patrol.distanceKm
-        : 0.0;
 
-    return Container(
-      padding: const EdgeInsets.all(AppSpace.lg),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
-        boxShadow: const [BoxShadow(color: AppColors.shadowTintStrong, blurRadius: 16)],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _Stat(label: l10n.t('patrol.distance'), value: '${patrol.distanceKm.toStringAsFixed(2)} ${l10n.t('common.km')}'),
-              _Stat(label: l10n.t('patrol.duration'), value: _fmtDuration(patrol.durationSeconds)),
-              _Stat(
-                label: l10n.t('patrol.pace'),
-                value: paceMinPerKm > 0 ? '${paceMinPerKm.toStringAsFixed(1)} min/km' : '—',
-              ),
-            ],
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _GlassIconButton(
+          icon: isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+          onTap: () => isPaused ? controller.resume() : controller.pause(),
+          color: isPaused ? AppColors.positive : AppColors.caution,
+        ),
+        const SizedBox(width: AppSpace.xl),
+        PressableScale(
+          onTap: () => _confirmEnd(context, ref),
+          child: Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              color: AppColors.danger,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 4),
+              boxShadow: const [BoxShadow(color: AppColors.shadowTintStrong, blurRadius: 16)],
+            ),
+            child: const Icon(Icons.stop_rounded, color: Colors.white, size: 32),
           ),
-          const SizedBox(height: AppSpace.lg),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 56,
-                  child: OutlinedButton.icon(
-                    onPressed: () => isPaused ? controller.resume() : controller.pause(),
-                    icon: Icon(isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded),
-                    label: Text(isPaused ? l10n.t('patrol.resume') : l10n.t('patrol.pause')),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpace.md),
-              Expanded(
-                flex: 2,
-                child: SizedBox(
-                  height: 56,
-                  child: FilledButton.icon(
-                    onPressed: () => _openQuickLogSheet(context, l10n, patrol.id),
-                    icon: const Icon(Icons.add_rounded),
-                    label: Text(l10n.t('patrol.logObservation')),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
+        const SizedBox(width: AppSpace.xl),
+        _GlassIconButton(
+          icon: Icons.add_rounded,
+          onTap: () => _openQuickLogSheet(context, l10n, patrol.id),
+          color: AppColors.accent,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmEnd(BuildContext context, WidgetRef ref) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.stop_circle_rounded, color: AppColors.danger),
+              title: Text(l10n.t('patrol.end')),
+              onTap: () => Navigator.pop(ctx, 'end'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.arrow_back_rounded),
+              title: Text(l10n.t('common.cancel')),
+              onTap: () => Navigator.pop(ctx, null),
+            ),
+          ],
+        ),
       ),
     );
+    if (action == 'end' && context.mounted) {
+      ref.read(activePatrolControllerProvider.notifier).end();
+      context.pushReplacement('/patrol/review');
+    }
   }
 
   void _openQuickLogSheet(BuildContext context, AppLocalizations l10n, String patrolId) {
@@ -241,22 +515,6 @@ class _BottomPanel extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _QuickLogCategorySheet(l10n: l10n, patrolId: patrolId),
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(value, style: Theme.of(context).textTheme.titleMedium),
-        Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.muted)),
-      ],
     );
   }
 }
@@ -335,11 +593,14 @@ class _CategoryTile extends StatelessWidget {
           children: [
             Icon(observationTypeIcon(type), color: AppColors.accent),
             const SizedBox(height: 6),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            Flexible(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ),

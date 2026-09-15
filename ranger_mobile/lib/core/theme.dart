@@ -85,6 +85,29 @@ class AppColors {
   static const syncedSoft = Color(0x1A2F5233);
   static const syncFailed = Color(0xFFA23B2C);
   static const syncFailedSoft = Color(0x1AA23B2C);
+
+  // --- Reserve map additions (boundary zones / offline vector basemap) ---
+
+  /// Buffer-zone fill/border — light yellow-green, matching the reference
+  /// reserve map's outer ring.
+  static const zoneBufferBase = Color(0xFF8FAF5C);
+  static const zoneBufferFill = Color(0x668FAF5C);
+  static const zoneBufferBorder = Color(0xFF6C8A3F);
+
+  /// Core-zone fill/border — deeper canopy green, drawn on top of the
+  /// buffer polygon so the two read as concentric zones like the paper map.
+  static const zoneCoreBase = Color(0xFF3D6B32);
+  static const zoneCoreFill = Color(0x803D6B32);
+  static const zoneCoreBorder = Color(0xFF1D3319);
+
+  /// Tiger-territory outline — reuses the ochre editorial accent so it
+  /// never fights the green zone fills underneath it.
+  static const territoryOutline = ochre;
+
+  /// Flat backdrop shown instead of live OSM tiles when the device has no
+  /// network, so boundary polygons/labels/markers render on a clean
+  /// vector-only canvas rather than blank/broken tile squares.
+  static const mapOfflineBase = Color(0xFFF1ECDD);
 }
 
 /// Spacing scale — macro-whitespace bias. Screens should default to the

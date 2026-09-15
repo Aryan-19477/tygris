@@ -75,6 +75,25 @@ class _ObservationDetailSheet extends StatelessWidget {
                 '${o.lat.toStringAsFixed(5)}, ${o.lng.toStringAsFixed(5)}'),
             _row(context, Icons.photo_camera_outlined,
                 '${o.photoIds.length} ${l10n.t('common.photos').toLowerCase()}'),
+            // Auto-attached spatial context, if this observation has it
+            // (computed at capture time — see `core/geo_context.dart`;
+            // older observations logged before this feature simply omit
+            // these rows rather than showing fabricated values).
+            if (o.rangeName != null)
+              _row(context, Icons.map_outlined, '${l10n.t('obs.rangeLabel')}: ${o.rangeName}'),
+            if (o.zoneName != null)
+              _row(context, Icons.layers_outlined,
+                  '${l10n.t('obs.zoneLabel')}: ${l10n.t(zoneLabelKey(o.zoneName!))}'),
+            if (o.nearestStationId != null && o.nearestStationDistanceM != null)
+              _row(
+                context,
+                Icons.videocam_outlined,
+                '${l10n.t('obs.nearestStationLabel')}: ${o.nearestStationId} · '
+                    '${_formatDistanceM(o.nearestStationDistanceM!)}',
+              ),
+            if (o.distanceFromRouteM != null)
+              _row(context, Icons.route_outlined,
+                  '${l10n.t('obs.distanceFromRouteLabel')}: ${_formatDistanceM(o.distanceFromRouteM!)}'),
             const SizedBox(height: AppSpace.sm),
             SyncStatusChip(status: o.syncStatus, l10n: l10n),
           ],
@@ -82,6 +101,9 @@ class _ObservationDetailSheet extends StatelessWidget {
       ),
     );
   }
+
+  String _formatDistanceM(double meters) =>
+      meters < 1000 ? '${meters.round()} m' : '${(meters / 1000).toStringAsFixed(2)} km';
 
   Widget _row(BuildContext context, IconData icon, String text) {
     return Padding(

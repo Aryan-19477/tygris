@@ -28,6 +28,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    final savedBackend = ref.read(localStoreProvider).getString('backend_url_v1');
+    if (savedBackend != null && savedBackend.isNotEmpty) {
+      ApiClient.instance.configureBaseUrl(savedBackend);
+      _backendUrlController.text = savedBackend;
+    }
     final config = ref.read(supabaseConfigProvider);
     _supabaseUrlController = TextEditingController(text: config.url ?? '');
     _supabaseKeyController = TextEditingController(text: config.anonKey ?? '');
@@ -48,7 +53,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final ranger = ref.watch(currentRangerProvider);
     final syncState = ref.watch(syncQueueStateProvider).value;
     final service = ref.read(syncQueueServiceProvider);
-    final gisSync = ref.watch(gisSyncStateProvider).value;
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.t('settings.title'))),
@@ -120,7 +124,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   const SizedBox(height: AppSpace.sm),
                   Row(
                     children: [
-                      Text(l10n.t('settings.syncQueueSummary'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Flexible(
+                        child: Text(
+                          l10n.t('settings.syncQueueSummary'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
                       const Spacer(),
                       if (syncState != null) ...[
                         StatusPill(label: l10n.t('sync.pendingCount', {'count': '${syncState.pendingCount}'}), color: AppColors.syncing),
@@ -136,7 +147,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     width: double.infinity,
                     height: 48,
                     child: OutlinedButton(
-                      onPressed: () => service.setOnline(true),
+                      onPressed: () async {
+                        service.setOnline(true);
+                        await ensureSupabaseInitialized(
+                          url: ref.read(supabaseConfigProvider).url,
+                          anonKey: ref.read(supabaseConfigProvider).anonKey,
+                        );
+                        await service.pushAllLocalEntities();
+                      },
                       child: Text(l10n.t('settings.syncNow')),
                     ),
                   ),
@@ -166,10 +184,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     width: double.infinity,
                     height: 48,
                     child: FilledButton(
-                      onPressed: () {
+                      onPressed: () async {
                         final url = _backendUrlController.text.trim();
                         if (url.isEmpty) return;
                         ApiClient.instance.configureBaseUrl(url);
+                        await ref.read(localStoreProvider).setString('backend_url_v1', url);
                         ref.read(gisSyncServiceProvider).refresh();
                       },
                       child: Text(l10n.t('settings.backendSave')),
@@ -243,8 +262,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 final key = _supabaseKeyController.text.trim();
                                 if (url.isEmpty || key.isEmpty) return;
                                 await ref.read(supabaseConfigProvider).save(url: url, anonKey: key);
+                                final ok = await ensureSupabaseInitialized(url: url, anonKey: key);
+                                if (ok) {
+                                  await ref.read(syncQueueServiceProvider).pushAllLocalEntities();
+                                }
                                 setState(() {
-                                  _supabaseSavedNote = l10n.t('settings.supabaseRestartNote');
+                                  _supabaseSavedNote = ok
+                                      ? 'Connected to Supabase! Synced local reports.'
+                                      : l10n.t('settings.supabaseRestartNote');
                                 });
                               },
                               child: Text(l10n.t('settings.supabaseConnect')),

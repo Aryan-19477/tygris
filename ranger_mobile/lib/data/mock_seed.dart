@@ -38,22 +38,25 @@ Future<void> seedMockDataIfNeeded(ProviderContainer container) async {
   final random = Random(42);
 
   // --- Ranger + team -----------------------------------------------
+  const canonicalRangerId = '0dc2bb32-999a-4c09-8bc2-49ee9f0aa982';
+  const canonicalTeamId = '227f78c4-e3c1-49e3-91e2-01ec8982c8dc';
+
   final ranger = Ranger(
-    id: newId(),
+    id: canonicalRangerId,
     name: 'Arjun Rathore',
     badgeId: 'PTR-0417',
     phone: '+91 98765 43210',
     role: RangerRole.ranger,
-    teamId: null,
+    teamId: canonicalTeamId,
     avatarSeed: 'arjun-rathore',
   );
   final team = Team(
-    id: newId(),
+    id: canonicalTeamId,
     name: 'Turia Beat Patrol',
     memberIds: [ranger.id],
     beatOrZone: 'Turia Core',
   );
-  final seededRanger = ranger.copyWith(teamId: team.id);
+  final seededRanger = ranger;
 
   await container.read(rangerRepositoryProvider).save(seededRanger);
   await container.read(teamRepositoryProvider).save(team);

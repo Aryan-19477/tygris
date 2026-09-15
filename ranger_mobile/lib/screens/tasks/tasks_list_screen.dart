@@ -39,13 +39,16 @@ class _TasksListScreenState extends ConsumerState<TasksListScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpace.lg, AppSpace.md, AppSpace.lg, AppSpace.sm),
-              child: SegmentedButton<int>(
-                segments: [
-                  for (var i = 0; i < labels.length; i++)
-                    ButtonSegment(value: i, label: Text('${labels[i]} (${groups[i].length})')),
-                ],
-                selected: {_segment},
-                onSelectionChanged: (s) => setState(() => _segment = s.first),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SegmentedButton<int>(
+                  segments: [
+                    for (var i = 0; i < labels.length; i++)
+                      ButtonSegment(value: i, label: Text('${labels[i]} (${groups[i].length})')),
+                  ],
+                  selected: {_segment},
+                  onSelectionChanged: (s) => setState(() => _segment = s.first),
+                ),
               ),
             ),
             Expanded(

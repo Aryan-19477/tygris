@@ -81,9 +81,13 @@ class _PatrolSetupScreenState extends ConsumerState<PatrolSetupScreen> {
                 children: [
                   const Icon(Icons.groups_rounded, color: AppColors.accent),
                   const SizedBox(width: AppSpace.md),
-                  Text(
-                    myTeam.isNotEmpty ? myTeam.first.name : l10n.t('common.none'),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  Expanded(
+                    child: Text(
+                      myTeam.isNotEmpty ? myTeam.first.name : l10n.t('common.none'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ],
               ),

@@ -49,13 +49,16 @@ class QuickReportScreen extends ConsumerWidget {
                             children: [
                               Icon(observationTypeIcon(type), color: AppColors.accent, size: 26),
                               const SizedBox(height: 8),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: Text(
-                                  l10n.t(observationTypeLabelKey(type)),
-                                  textAlign: TextAlign.center,
-                                  maxLines: 2,
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              Flexible(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Text(
+                                    l10n.t(observationTypeLabelKey(type)),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                  ),
                                 ),
                               ),
                             ],

@@ -105,6 +105,15 @@ Map<String, dynamic> observationToSupabaseRow(Observation o) => {
       'structured_attrs': {
         'title': o.title,
         'follow_up_required': o.followUpRequired,
+        // Auto-attached spatial context computed client-side at GPS-capture
+        // time (`core/geo_context.dart`) — nested here rather than as its
+        // own columns so no Supabase migration is needed (see
+        // `supabase/migrations/0001_ranger_ops.sql`).
+        'zone_name': o.zoneName,
+        'range_name': o.rangeName,
+        'nearest_station_id': o.nearestStationId,
+        'nearest_station_distance_m': o.nearestStationDistanceM,
+        'distance_from_route_m': o.distanceFromRouteM,
       },
     };
 

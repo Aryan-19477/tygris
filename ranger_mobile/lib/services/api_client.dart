@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 
 /// Talks to the same FastAPI backend (`backend/main.py`, port 8420) that
 /// `frontend-v2` already uses for GIS/camera-station data. Mirrors
@@ -23,9 +22,6 @@ class ApiClient {
   // `defaultTargetPlatform` (not `dart:io`'s `Platform`) so this compiles
   // for the web target too — `dart:io` isn't available there.
   static String _defaultBaseUrl() {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8420';
-    }
     return 'http://127.0.0.1:8420';
   }
 

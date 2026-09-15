@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'local_store.dart';
 import '../data/repository.dart';
@@ -24,14 +25,20 @@ class SupabaseConfig {
 
   final LocalStore _store;
 
+  static const defaultUrl = 'https://dggkktyblzezhqavndqc.supabase.co';
+  static const defaultAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnZ2trdHlibHplemhxYXZuZHFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk0MDczODIsImV4cCI6MjEwNDk4MzM4Mn0.--axOs4M68WsbWmorJPBvS3HfWblTni1K2EFbYZm7yI';
+
   String? get url {
     final v = _store.getString(_urlKey);
-    return (v == null || v.trim().isEmpty) ? null : v.trim();
+    if (v != null && v.trim().isNotEmpty) return v.trim();
+    return defaultUrl;
   }
 
   String? get anonKey {
     final v = _store.getString(_keyKey);
-    return (v == null || v.trim().isEmpty) ? null : v.trim();
+    if (v != null && v.trim().isNotEmpty) return v.trim();
+    return defaultAnonKey;
   }
 
   bool get isConfigured => url != null && anonKey != null;
@@ -63,10 +70,30 @@ final supabaseConfiguredProvider = Provider<bool>((ref) {
   return ref.watch(supabaseConfigProvider).isConfigured;
 });
 
-/// Set to true in `main.dart` iff `Supabase.initialize` actually succeeded
-/// for *this* running process. Code that is about to touch
-/// `Supabase.instance.client` must check this, not just
-/// [supabaseConfiguredProvider] (which only reflects saved settings and
-/// could be stale/invalid, e.g. right after a typo'd save that hasn't been
-/// restarted into yet, or an initialize() that threw).
+/// Set to true in `main.dart` or `ensureSupabaseInitialized` iff
+/// `Supabase.initialize` actually succeeded for *this* running process.
 bool supabaseReady = false;
+
+/// Initializes Supabase dynamically mid-session if not already initialized.
+Future<bool> ensureSupabaseInitialized({String? url, String? anonKey}) async {
+  if (supabaseReady) return true;
+  final effectiveUrl = (url?.trim().isNotEmpty == true) ? url!.trim() : SupabaseConfig.defaultUrl;
+  final effectiveKey = (anonKey?.trim().isNotEmpty == true) ? anonKey!.trim() : SupabaseConfig.defaultAnonKey;
+
+  try {
+    await Supabase.initialize(
+      url: effectiveUrl,
+      anonKey: effectiveKey,
+    );
+    supabaseReady = true;
+    return true;
+  } catch (e) {
+    try {
+      final _ = Supabase.instance.client;
+      supabaseReady = true;
+      return true;
+    } catch (_) {}
+    return false;
+  }
+}
+

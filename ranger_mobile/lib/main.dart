@@ -11,6 +11,7 @@ import 'core/local_store.dart';
 import 'core/supabase_config.dart';
 import 'data/gis_sync.dart';
 import 'data/mock_seed.dart';
+import 'services/api_client.dart';
 import 'data/repository.dart';
 import 'data/supabase_mapping.dart';
 import 'l10n/app_localizations.dart';
@@ -33,6 +34,22 @@ Future<void> main() async {
   );
 
   await seedMockDataIfNeeded(container);
+
+  // Baseline GIS data: the real Pench reserve boundaries/ranges/camera
+  // stations ship as a bundled asset (see `data/gis_sync.dart`), so the Map
+  // screen is fully populated on a completely fresh install with zero
+  // network and no prior cache. This only reads a local asset — no HTTP —
+  // so it's safe to await before first paint. A previously-cached live
+  // sync (from an earlier run) always wins over the bundled asset, and a
+  // fresh live sync (below) always wins over both.
+  await container.read(gisSyncServiceProvider).loadBundledAssetIfNeeded();
+
+  final savedBackend = localStore.getString('backend_url_v1');
+  if (savedBackend != null && savedBackend.isNotEmpty) {
+    ApiClient.instance.configureBaseUrl(savedBackend);
+  } else {
+    ApiClient.instance.configureBaseUrl('http://127.0.0.1:8420');
+  }
 
   // Optional real backend: only attempted when the user has saved a
   // project URL + anon key in Settings. Failures here (bad URL typo, no
