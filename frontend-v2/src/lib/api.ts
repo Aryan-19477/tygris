@@ -1,5 +1,12 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8420";
 
+/** Capture Log image_url values are backend-relative paths (e.g.
+ * "/captures/EVT_xxx.jpg") — must be joined with the API origin, not the
+ * frontend's own, since they're served by FastAPI's static mount. */
+export function captureImageSrc(path: string | null): string | null {
+  return path ? `${API_BASE}${path}` : null;
+}
+
 export type Decision = "auto_match" | "needs_review";
 
 export interface Candidate {
@@ -115,6 +122,18 @@ export interface Stats {
   core_area_km2?: number;
   buffer_area_km2?: number;
   stations?: string[];
+}
+
+export interface CaptureLogItem {
+  event_id: string;
+  tiger_id: string | null;
+  tiger_name: string | null;
+  camera_id: string;
+  zone?: string;
+  timestamp: string;
+  flank_side?: string;
+  alert_level?: string;
+  image_url: string | null;
 }
 
 export interface Sighting {
@@ -368,6 +387,16 @@ export const api = {
   },
 
   reviewQueue: () => request<{ items: ReviewQueueItem[] }>("/api/review-queue"),
+
+  captures: (opts: { limit?: number; before?: string; cameraId?: string; tigerId?: string } = {}) => {
+    const params = new URLSearchParams();
+    if (opts.limit) params.set("limit", String(opts.limit));
+    if (opts.before) params.set("before", opts.before);
+    if (opts.cameraId) params.set("camera_id", opts.cameraId);
+    if (opts.tigerId) params.set("tiger_id", opts.tigerId);
+    const qs = params.toString();
+    return request<{ items: CaptureLogItem[]; next_before: string | null }>(`/api/captures${qs ? `?${qs}` : ""}`);
+  },
 
   resolveReview: (itemId: string, tigerId: string | null) =>
     request<{ status: string; item_id: string; assigned_tiger_id: string; is_new_individual: boolean }>(

@@ -20,9 +20,10 @@ import {
 import { TopBar } from "@/components/TopBar";
 import { Card, SectionLabel, Pill, StatCard, EmptyState } from "@/components/ui";
 import { useNavigation } from "@/lib/navigation-context";
-import { api, type Stats, type GalleryIndividual, type GISStation } from "@/lib/api";
+import { api, captureImageSrc, type Stats, type GalleryIndividual, type GISStation, type CaptureLogItem } from "@/lib/api";
 import { buildAttentionQueue, type AttentionItem, type UrgencyLevel } from "@/lib/attention";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { ImageBroken } from "@phosphor-icons/react";
 
 /**
  * Captures — merges what used to be three separate top-level pages
@@ -67,6 +68,7 @@ export function CapturesView({
   const [individuals, setIndividuals] = useState<GalleryIndividual[] | null>(null);
   const [activeStation, setActiveStation] = useState<string | null>(null);
   const [networkOpen, setNetworkOpen] = useState(false);
+  const [tab, setTab] = useState<"review" | "log">("review");
 
   const load = async () => {
     const [alertsRes, queueRes] = await Promise.all([
@@ -200,52 +202,72 @@ export function CapturesView({
           </div>
         )}
 
-        <div className="mb-6 flex items-center gap-6">
-          <PriorityCount label={t("attention.urgencyCritical")} count={criticalCount} color="text-danger" />
-          <PriorityCount label={t("attention.urgencyCaution")} count={cautionCount} color="text-caution" />
-          <PriorityCount label={t("attention.priorityTotalPending")} count={visibleItems.length} color="text-foreground" />
+        <div className="mb-5 flex gap-2 border-b border-border">
+          {(["review", "log"] as const).map((id) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`border-b-2 px-1 pb-2 text-sm font-medium transition-colors ${
+                tab === id ? "border-accent text-foreground" : "border-transparent text-muted hover:text-foreground"
+              }`}
+            >
+              {id === "review" ? t("captures.reviewTab") : t("captures.logTab")}
+            </button>
+          ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-0 lg:grid-cols-[1fr_420px]">
-          <div className="border-border pr-0 lg:border-r lg:pr-8">
-            {items && visibleItems.length === 0 && (
-              <EmptyState
-                tone="positive"
-                icon={<ListChecks size={22} weight="fill" />}
-                title={t("attention.queueClear")}
-                subtitle={t("attention.queueClearSub")}
-              />
-            )}
-
-            <div className="space-y-3">
-              {visibleItems.map((item, i) => (
-                <QueueCard
-                  key={item.id}
-                  item={item}
-                  index={i}
-                  active={selectedItem?.id === item.id}
-                  onClick={() => setSelectedId(item.id)}
-                />
-              ))}
+        {tab === "review" ? (
+          <>
+            <div className="mb-6 flex items-center gap-6">
+              <PriorityCount label={t("attention.urgencyCritical")} count={criticalCount} color="text-danger" />
+              <PriorityCount label={t("attention.urgencyCaution")} count={cautionCount} color="text-caution" />
+              <PriorityCount label={t("attention.priorityTotalPending")} count={visibleItems.length} color="text-foreground" />
             </div>
-          </div>
 
-          <div className="px-0 pt-6 lg:px-6 lg:pt-0">
-            <AnimatePresence mode="wait">
-              {selectedItem ? (
-                <QueueDetail
-                  key={selectedItem.id}
-                  item={selectedItem}
-                  resolving={resolving === selectedItem.id}
-                  onResolve={(tigerId) => resolve(selectedItem, tigerId)}
-                  onAcknowledge={() => acknowledge(selectedItem)}
-                />
-              ) : (
-                <EmptyState icon={<Target size={22} />} title={t("attention.selectItem")} />
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
+            <div className="grid grid-cols-1 gap-0 lg:grid-cols-[1fr_420px]">
+              <div className="border-border pr-0 lg:border-r lg:pr-8">
+                {items && visibleItems.length === 0 && (
+                  <EmptyState
+                    tone="positive"
+                    icon={<ListChecks size={22} weight="fill" />}
+                    title={t("attention.queueClear")}
+                    subtitle={t("attention.queueClearSub")}
+                  />
+                )}
+
+                <div className="space-y-3">
+                  {visibleItems.map((item, i) => (
+                    <QueueCard
+                      key={item.id}
+                      item={item}
+                      index={i}
+                      active={selectedItem?.id === item.id}
+                      onClick={() => setSelectedId(item.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="px-0 pt-6 lg:px-6 lg:pt-0">
+                <AnimatePresence mode="wait">
+                  {selectedItem ? (
+                    <QueueDetail
+                      key={selectedItem.id}
+                      item={selectedItem}
+                      resolving={resolving === selectedItem.id}
+                      onResolve={(tigerId) => resolve(selectedItem, tigerId)}
+                      onAcknowledge={() => acknowledge(selectedItem)}
+                    />
+                  ) : (
+                    <EmptyState icon={<Target size={22} />} title={t("attention.selectItem")} />
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </>
+        ) : (
+          <CaptureLogPanel cameraId={activeStation} />
+        )}
 
         {/* camera network rollup — a disclosure, not a destination */}
         <div className="mt-8 border-t border-border pt-5">
@@ -502,5 +524,80 @@ function QueueDetail({
         )}
       </div>
     </motion.div>
+  );
+}
+
+function CaptureLogPanel({ cameraId }: { cameraId: string | null }) {
+  const { t } = useLanguage();
+  const [items, setItems] = useState<CaptureLogItem[]>([]);
+  const [nextBefore, setNextBefore] = useState<string | null | undefined>(undefined);
+  const [loading, setLoading] = useState(false);
+
+  const load = async (before?: string) => {
+    setLoading(true);
+    try {
+      const res = await api.captures({ limit: 30, before, cameraId: cameraId ?? undefined });
+      setItems((prev) => (before ? [...prev, ...res.items] : res.items));
+      setNextBefore(res.next_before);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setItems([]);
+    setNextBefore(undefined);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraId]);
+
+  if (items.length === 0 && !loading) {
+    return <EmptyState icon={<ImageBroken size={22} />} title={t("captures.logEmpty")} />;
+  }
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {items.map((c, i) => (
+          <motion.div
+            key={c.event_id}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: Math.min(i * 0.02, 0.2) }}
+          >
+            <Card padding="sm" className="overflow-hidden !p-0">
+              <div className="aspect-square w-full bg-surface-sunken">
+                {c.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={captureImageSrc(c.image_url) ?? undefined} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted">
+                    <ImageBroken size={18} />
+                    <span className="text-2xs">{t("captures.noImageOnFile")}</span>
+                  </div>
+                )}
+              </div>
+              <div className="p-2.5">
+                <div className="truncate text-sm font-medium text-foreground">{c.tiger_name ?? c.tiger_id ?? t("captures.logEmpty")}</div>
+                <div className="mt-0.5 truncate text-2xs text-muted">
+                  {c.camera_id} · {formatTime(c.timestamp, t("common.unknownTime"))}
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      {nextBefore && (
+        <button
+          onClick={() => load(nextBefore)}
+          disabled={loading}
+          className="mt-5 flex w-full items-center justify-center rounded-full border border-border bg-surface px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-border-strong disabled:opacity-50"
+        >
+          {loading ? t("common.loading") : t("captures.loadMore")}
+        </button>
+      )}
+    </div>
   );
 }
