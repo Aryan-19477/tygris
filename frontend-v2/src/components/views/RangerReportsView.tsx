@@ -12,6 +12,7 @@ import {
   Radio,
 } from "@phosphor-icons/react";
 import { TopBar } from "@/components/TopBar";
+import { Card, SectionLabel, Pill, EmptyState } from "@/components/ui";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { api, type RangerObservation, type TerritoryCheck, type Stats } from "@/lib/api";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
@@ -61,6 +62,7 @@ export function RangerReportsView({ stats }: { stats: Stats | null }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
 
     const channel = supabase
@@ -118,13 +120,11 @@ export function RangerReportsView({ stats }: { stats: Stats | null }) {
       <div>
         <TopBar title={t("rangerReports.title")} subtitle={t("rangerReports.subtitle")} alertCount={stats?.pending_review ?? 0} />
         <div className="px-8 py-6">
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface px-6 py-16 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-sunken text-muted">
-              <Binoculars size={22} />
-            </div>
-            <div className="text-sm font-medium text-foreground">{t("rangerReports.notConfigured")}</div>
-            <p className="max-w-md text-xs text-muted">{t("rangerReports.notConfiguredDesc")}</p>
-          </div>
+          <EmptyState
+            icon={<Binoculars size={22} />}
+            title={t("rangerReports.notConfigured")}
+            subtitle={t("rangerReports.notConfiguredDesc")}
+          />
         </div>
       </div>
     );
@@ -137,10 +137,10 @@ export function RangerReportsView({ stats }: { stats: Stats | null }) {
         subtitle={t("rangerReports.subtitle")}
         alertCount={stats?.pending_review ?? 0}
         right={
-          <span className="flex items-center gap-1.5 rounded-full border border-positive/30 bg-positive-soft px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-wide text-positive">
+          <Pill tone="positive" className="flex items-center gap-1.5 border border-positive/30 px-2.5 py-1">
             <Radio size={12} weight="fill" />
             {t("rangerReports.live")}
-          </span>
+          </Pill>
         }
       />
       <div className="px-8 py-6 space-y-4">
@@ -154,11 +154,7 @@ export function RangerReportsView({ stats }: { stats: Stats | null }) {
           <div className="text-sm text-muted">{t("rangerReports.loading")}</div>
         )}
 
-        {sorted && sorted.length === 0 && (
-          <div className="rounded-2xl border border-border bg-surface px-6 py-16 text-center text-sm text-muted">
-            {t("rangerReports.empty")}
-          </div>
-        )}
+        {sorted && sorted.length === 0 && <EmptyState title={t("rangerReports.empty")} />}
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {sorted?.map((obs, i) => (
@@ -178,17 +174,23 @@ export function RangerReportsView({ stats }: { stats: Stats | null }) {
   );
 }
 
+const TONE_TEXT_CLASS: Record<"positive" | "caution" | "neutral", string> = {
+  positive: "text-positive",
+  caution: "text-caution",
+  neutral: "text-muted",
+};
+
 function statusTone(status: TerritoryCheck["status"] | undefined, t: (k: string) => string) {
   switch (status) {
     case "confirmed_present":
-      return { label: t("rangerReports.statusConfirmed"), className: "bg-positive-soft text-positive", icon: CheckCircle };
+      return { label: t("rangerReports.statusConfirmed"), tone: "positive" as const, icon: CheckCircle };
     case "possible_move":
-      return { label: t("rangerReports.statusPossibleMove"), className: "bg-caution-soft text-caution", icon: WarningCircle };
+      return { label: t("rangerReports.statusPossibleMove"), tone: "caution" as const, icon: WarningCircle };
     case "no_location":
-      return { label: t("rangerReports.statusNoLocation"), className: "bg-surface-sunken text-muted", icon: Question };
+      return { label: t("rangerReports.statusNoLocation"), tone: "neutral" as const, icon: Question };
     case "no_recent_data":
     default:
-      return { label: t("rangerReports.statusNoRecentData"), className: "bg-surface-sunken text-muted", icon: Question };
+      return { label: t("rangerReports.statusNoRecentData"), tone: "neutral" as const, icon: Question };
   }
 }
 
@@ -225,65 +227,64 @@ function ObservationCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.02, 0.3) }}
-      className="rounded-2xl border border-border bg-surface p-5"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="font-mono text-[11px] uppercase tracking-wide text-muted">
-            {t("rangerReports.reportedBy", { rangerId: obs.ranger_id })}
+      <Card padding="lg">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <SectionLabel>{t("rangerReports.reportedBy", { rangerId: obs.ranger_id })}</SectionLabel>
+            <div className="mt-1 font-serif text-lg font-medium text-foreground">
+              {obs.species_category || obs.obs_type}
+            </div>
+            <div className="mt-0.5 text-xs text-muted">{when}</div>
           </div>
-          <div className="mt-1 font-serif text-lg font-medium text-foreground">
-            {obs.species_category || obs.obs_type}
-          </div>
-          <div className="mt-0.5 text-xs text-muted">{when}</div>
+          <Pill tone="neutral" className="px-2.5 py-1">
+            {obs.obs_type}
+          </Pill>
         </div>
-        <span className="rounded-full bg-surface-sunken px-2.5 py-1 font-mono text-[10px] font-semibold text-muted">
-          {obs.obs_type}
-        </span>
-      </div>
 
-      <div className="mt-3 flex items-center gap-1.5 text-xs text-muted">
-        <MapPin size={13} />
-        {hasCoords ? `${obs.lat!.toFixed(5)}, ${obs.lon!.toFixed(5)}` : t("rangerReports.noCoordinates")}
-      </div>
+        <div className="mt-3 flex items-center gap-1.5 text-xs text-muted">
+          <MapPin size={13} />
+          {hasCoords ? `${obs.lat!.toFixed(5)}, ${obs.lon!.toFixed(5)}` : t("rangerReports.noCoordinates")}
+        </div>
 
-      {obs.remarks && <p className="mt-2 text-sm text-foreground">{obs.remarks}</p>}
+        {obs.remarks && <p className="mt-2 text-sm text-foreground">{obs.remarks}</p>}
 
-      {wildlife && (
-        <div className="mt-4 border-t border-border pt-3">
-          {check ? (
-            <div>
-              <div className="flex items-center gap-2">
-                {ToneIcon && <ToneIcon size={14} weight="fill" className={tone!.className.split(" ")[1]} />}
-                <span className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] font-semibold ${tone!.className}`}>
-                  {tone!.label}
-                </span>
-                {check.resident_tiger_id && (
-                  <span className="text-[11px] text-muted">
-                    {t("rangerReports.residentTiger", { tigerId: check.resident_tiger_id })}
-                  </span>
-                )}
+        {wildlife && (
+          <div className="mt-4 border-t border-border pt-3">
+            {check ? (
+              <div>
+                <div className="flex items-center gap-2">
+                  {ToneIcon && <ToneIcon size={14} weight="fill" className={TONE_TEXT_CLASS[tone!.tone]} />}
+                  <Pill tone={tone!.tone} className="px-2.5 py-0.5">
+                    {tone!.label}
+                  </Pill>
+                  {check.resident_tiger_id && (
+                    <span className="text-[11px] text-muted">
+                      {t("rangerReports.residentTiger", { tigerId: check.resident_tiger_id })}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-2 text-sm text-foreground">{check.summary}</p>
               </div>
-              <p className="mt-2 text-sm text-foreground">{check.summary}</p>
-            </div>
-          ) : hasCoords ? (
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-muted">{t("rangerReports.statusNoRecentData")}</span>
-              <button
-                onClick={onRunCheck}
-                disabled={running}
-                className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent transition-colors hover:bg-accent-soft/70 disabled:opacity-60"
-              >
-                <ArrowsClockwise size={13} className={running ? "animate-spin" : ""} />
-                {running ? t("rangerReports.running") : t("rangerReports.runCheck")}
-              </button>
-            </div>
-          ) : (
-            <span className="text-xs text-muted">{t("rangerReports.noCoordinates")}</span>
-          )}
-          {errored && <p className="mt-1.5 text-xs text-danger">{t("rangerReports.checkFailed")}</p>}
-        </div>
-      )}
+            ) : hasCoords ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-muted">{t("rangerReports.statusNoRecentData")}</span>
+                <button
+                  onClick={onRunCheck}
+                  disabled={running}
+                  className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent transition-colors hover:bg-accent-soft/70 disabled:opacity-60"
+                >
+                  <ArrowsClockwise size={13} className={running ? "animate-spin" : ""} />
+                  {running ? t("rangerReports.running") : t("rangerReports.runCheck")}
+                </button>
+              </div>
+            ) : (
+              <span className="text-xs text-muted">{t("rangerReports.noCoordinates")}</span>
+            )}
+            {errored && <p className="mt-1.5 text-xs text-danger">{t("rangerReports.checkFailed")}</p>}
+          </div>
+        )}
+      </Card>
     </motion.div>
   );
 }

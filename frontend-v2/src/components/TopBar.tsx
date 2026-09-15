@@ -36,8 +36,8 @@ export function TopBar({
         <VoiceAgentButton />
         <LanguageSwitcher />
         <button
-          onClick={() => navigate("attention")}
-          title={t("nav.attention")}
+          onClick={() => navigate("captures")}
+          title={t("nav.captures")}
           className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-muted transition-colors hover:border-border-strong hover:text-foreground"
         >
           <Bell size={16} />

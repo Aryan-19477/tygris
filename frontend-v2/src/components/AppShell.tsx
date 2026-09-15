@@ -4,10 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { List } from "@phosphor-icons/react";
 import { Sidebar } from "./Sidebar";
 import { ReserveMapView } from "./views/ReserveMapView";
-import { AttentionQueueView } from "./views/AttentionQueueView";
+import { CapturesView } from "./views/CapturesView";
 import { TigerCatalogueView } from "./views/TigerCatalogueView";
 import { TigerDossierView } from "./views/TigerDossierView";
-import { StationHealthView } from "./views/StationHealthView";
 import { RangerReportsView } from "./views/RangerReportsView";
 import { PairsView } from "./views/PairsView";
 import { IdentifyView } from "./views/IdentifyView";
@@ -21,11 +20,10 @@ import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 export type View =
   | "map"
-  | "attention"
+  | "captures"
   | "catalogue"
   | "pairs"
   | "dossier"
-  | "stations"
   | "rangerReports"
   | "identify"
   | "screening"
@@ -89,8 +87,8 @@ export function AppShell() {
             {view === "map" && (
               <ReserveMapView onOpenTiger={openTigerDossier} stats={stats} />
             )}
-            {view === "attention" && (
-              <AttentionQueueView stats={stats} onResolved={refreshStats} />
+            {view === "captures" && (
+              <CapturesView stats={stats} onResolved={refreshStats} />
             )}
             {view === "catalogue" && (
               <TigerCatalogueView stats={stats} onOpenTiger={openTigerDossier} />
@@ -107,7 +105,6 @@ export function AppShell() {
                 onNavigateToMap={() => navigate("map")}
               />
             )}
-            {view === "stations" && <StationHealthView stats={stats} />}
             {view === "rangerReports" && <RangerReportsView stats={stats} />}
             {view === "identify" && <IdentifyView stats={stats} />}
             {view === "screening" && <Pass1ScreeningView stats={stats} />}

@@ -8,6 +8,7 @@ import {
   Camera,
 } from "@phosphor-icons/react";
 import { TopBar } from "@/components/TopBar";
+import { EmptyState } from "@/components/ui";
 import { api, type GalleryIndividual, type Stats } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
@@ -75,10 +76,7 @@ export function TigerCatalogueView({
         {!filtered && <TigerGridSkeleton />}
 
         {filtered && filtered.length === 0 && (
-          <div className="flex min-h-70 flex-col items-center justify-center rounded-2xl border border-dashed border-border-strong text-center">
-            <p className="text-[15px] font-medium text-foreground">{t("catalogue.noMatch")}</p>
-            <p className="mt-1 text-sm text-muted">{t("catalogue.tryDifferentFilter")}</p>
-          </div>
+          <EmptyState title={t("catalogue.noMatch")} subtitle={t("catalogue.tryDifferentFilter")} />
         )}
 
         {filtered && filtered.length > 0 && (

@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { TopBar } from "@/components/TopBar";
+import { Card, SectionLabel, Pill } from "@/components/ui";
 import { PoseSkeletonViewer } from "@/components/PoseSkeletonViewer";
 import { SightingWindowSlider, EmptySightingState } from "@/components/SightingWindowSlider";
 import { api, type GalleryDetail, type Stats } from "@/lib/api";
@@ -135,7 +136,7 @@ export function TigerDossierView({
                   }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
-                <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1 text-[11px] font-mono font-bold text-white backdrop-blur-md border border-white/20">
+                <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-black/70 px-3 py-1 text-2xs font-mono font-bold text-white backdrop-blur-md border border-white/20">
                   <span
                     className="h-2.5 w-2.5 rounded-full ring-2 ring-white/50"
                     style={{ backgroundColor: `hsl(${hue}, 65%, 45%)` }}
@@ -163,10 +164,8 @@ export function TigerDossierView({
             </div>
 
             {stationHistory.length > 0 && (
-              <div className="rounded-2xl border border-border bg-surface p-5 shadow-sm">
-                <h3 className="mb-3 font-mono text-[11px] uppercase tracking-wider text-muted font-bold">
-                  {t("dossier.cameraEncounters")}
-                </h3>
+              <Card padding="lg" className="shadow-sm">
+                <SectionLabel className="mb-3">{t("dossier.cameraEncounters")}</SectionLabel>
                 <div className="space-y-2.5">
                   {stationHistory.slice(0, 5).map(([station, count]) => {
                     const max = stationHistory[0][1];
@@ -183,7 +182,7 @@ export function TigerDossierView({
                     );
                   })}
                 </div>
-              </div>
+              </Card>
             )}
           </div>
 
@@ -236,33 +235,31 @@ export function TigerDossierView({
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                        className="flex items-center justify-between rounded-xl border border-border bg-surface p-4 shadow-sm"
                       >
-                        <div className="flex items-center gap-3.5">
-                          <div
-                            className="h-3 w-3 rounded-full ring-2 ring-border-strong"
-                            style={{ backgroundColor: `hsl(${hue}, 65%, 45%)` }}
-                          />
-                          <div>
-                            <div className="font-mono text-xs font-bold text-foreground">
-                              {c.camera_id || c.station || t("common.unknownStation")}
-                            </div>
-                            <div className="text-[11px] font-mono text-muted mt-0.5">
-                              {formatDate(c.timestamp, t("common.unknownDate"))} • {t("dossier.zoneLabel", { zone: c.zone || "CORE" })} • {t("dossier.flankLabel", { flank: c.flank_side || "Left" })}
+                        <Card padding="md" className="flex items-center justify-between shadow-sm">
+                          <div className="flex items-center gap-3.5">
+                            <div
+                              className="h-3 w-3 rounded-full ring-2 ring-border-strong"
+                              style={{ backgroundColor: `hsl(${hue}, 65%, 45%)` }}
+                            />
+                            <div>
+                              <div className="font-mono text-xs font-bold text-foreground">
+                                {c.camera_id || c.station || t("common.unknownStation")}
+                              </div>
+                              <div className="text-2xs font-mono text-muted mt-0.5">
+                                {formatDate(c.timestamp, t("common.unknownDate"))} • {t("dossier.zoneLabel", { zone: c.zone || "CORE" })} • {t("dossier.flankLabel", { flank: c.flank_side || "Left" })}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider ${
-                            isCrit
-                              ? "bg-danger-soft text-danger border border-danger/40"
-                              : isCaut
-                              ? "bg-caution-soft text-caution border border-caution/40"
-                              : "bg-positive-soft text-positive border border-positive/40"
-                          }`}
-                        >
-                          {isCrit ? t("attention.urgencyCritical") : isCaut ? t("attention.urgencyCaution") : t("common.safe")}
-                        </span>
+                          <Pill
+                            tone={isCrit ? "danger" : isCaut ? "caution" : "positive"}
+                            className={`px-2.5 py-0.5 border ${
+                              isCrit ? "border-danger/40" : isCaut ? "border-caution/40" : "border-positive/40"
+                            }`}
+                          >
+                            {isCrit ? t("attention.urgencyCritical") : isCaut ? t("attention.urgencyCaution") : t("common.safe")}
+                          </Pill>
+                        </Card>
                       </motion.div>
                     );
                   }}
@@ -291,7 +288,7 @@ export function TigerDossierView({
             )}
 
             {activeTab === "barcode" && (
-              <div className="rounded-2xl border border-border bg-surface p-6 space-y-5 shadow-sm">
+              <Card padding="lg" className="space-y-5 shadow-sm">
                 <div>
                   <div className="font-mono text-sm font-bold text-foreground">
                     {t("dossier.barcodeTitle", { dim: detail?.embedding?.dim ?? 512 })}
@@ -328,7 +325,7 @@ export function TigerDossierView({
                       </div>
                       <span>{t("dossier.l2Norm", { value: (detail.embedding.l2_norm ?? 0).toFixed(3) })}</span>
                     </div>
-                    <div className="text-[11px] font-mono text-muted">
+                    <div className="text-2xs font-mono text-muted">
                       {t("dossier.extractedFrom", {
                         count: detail.embedding.num_source_entries ?? 0,
                         unit: detail.embedding.num_source_entries === 1 ? t("dossier.photoSingular") : t("dossier.photoPlural"),
@@ -343,7 +340,7 @@ export function TigerDossierView({
                     </div>
                   </div>
                 )}
-              </div>
+              </Card>
             )}
           </div>
         </div>

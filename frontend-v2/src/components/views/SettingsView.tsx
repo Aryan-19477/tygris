@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle, GearSix, XCircle, SignOut } from "@phosphor-icons/react";
 import { TopBar } from "@/components/TopBar";
+import { Card, SectionLabel } from "@/components/ui";
 import { api } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
@@ -21,8 +22,8 @@ export function SettingsView() {
       <TopBar title={t("settings.title")} subtitle={t("settings.subtitle")} alertCount={0} />
       <div className="px-8 py-6 space-y-8">
         <section>
-          <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">{t("settings.account")}</div>
-          <div className="flex items-center justify-between rounded-2xl border border-border bg-surface p-5">
+          <SectionLabel className="mb-3">{t("settings.account")}</SectionLabel>
+          <Card padding="lg" className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft font-mono text-sm font-medium text-accent">
                 RO
@@ -36,16 +37,16 @@ export function SettingsView() {
               <SignOut size={13} />
               {t("settings.logout")}
             </button>
-          </div>
+          </Card>
         </section>
 
         <section>
-          <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">{t("settings.systemArchitecture")}</div>
+          <SectionLabel className="mb-3">{t("settings.systemArchitecture")}</SectionLabel>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-border bg-surface p-5">
+            <Card padding="lg">
               <div className="mb-3 flex items-center gap-2">
                 <GearSix size={16} className="text-muted" />
-                <span className="font-mono text-[11px] uppercase tracking-wide text-muted">{t("settings.identificationApi")}</span>
+                <SectionLabel>{t("settings.identificationApi")}</SectionLabel>
               </div>
               <div className="flex items-center gap-2">
                 {online === null ? (
@@ -62,10 +63,10 @@ export function SettingsView() {
                   </>
                 )}
               </div>
-            </div>
+            </Card>
 
-            <div className="rounded-2xl border border-border bg-surface p-5">
-              <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">{t("settings.modelStatus")}</div>
+            <Card padding="lg">
+              <SectionLabel className="mb-3">{t("settings.modelStatus")}</SectionLabel>
               {modelStatus ? (
                 <>
                   <div className="flex items-center gap-2">
@@ -91,10 +92,10 @@ export function SettingsView() {
               ) : (
                 <span className="text-sm text-muted">{t("settings.checking")}</span>
               )}
-            </div>
+            </Card>
 
-            <div className="rounded-2xl border border-border bg-surface p-5">
-              <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">{t("settings.matchingThresholds")}</div>
+            <Card padding="lg">
+              <SectionLabel className="mb-3">{t("settings.matchingThresholds")}</SectionLabel>
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted">{t("settings.autoAccept")}</span>
@@ -105,12 +106,12 @@ export function SettingsView() {
                   <span className="font-mono text-foreground">0.55 cosine</span>
                 </div>
               </div>
-            </div>
+            </Card>
 
-            <div className="rounded-2xl border border-border bg-surface p-5">
-              <div className="mb-3 font-mono text-[11px] uppercase tracking-wide text-muted">{t("settings.compute")}</div>
+            <Card padding="lg">
+              <SectionLabel className="mb-3">{t("settings.compute")}</SectionLabel>
               <div className="text-sm text-foreground">NVIDIA RTX 4070 Laptop GPU (WSL2 + CUDA)</div>
-            </div>
+            </Card>
           </div>
         </section>
       </div>

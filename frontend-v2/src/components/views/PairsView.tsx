@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Camera, Heart, MapPin, UsersThree } from "@phosphor-icons/react";
 import { TopBar } from "@/components/TopBar";
+import { Card, Pill, EmptyState } from "@/components/ui";
 import { api, type GalleryIndividual, type Stats, type TigerAssociationPair } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
@@ -28,10 +29,10 @@ function classify(pair: TigerAssociationPair, byId: Map<string, GalleryIndividua
   return "overlap";
 }
 
-const KIND_STYLE: Record<PairKind, { labelKey: string; text: string; bg: string; icon: typeof Heart }> = {
-  courtship: { labelKey: "pairs.kindCourtship", text: "text-danger", bg: "bg-danger-soft", icon: Heart },
-  family: { labelKey: "pairs.kindFamily", text: "text-positive", bg: "bg-positive-soft", icon: UsersThree },
-  overlap: { labelKey: "pairs.kindOverlap", text: "text-caution", bg: "bg-caution-soft", icon: MapPin },
+const KIND_STYLE: Record<PairKind, { labelKey: string; tone: "danger" | "positive" | "caution"; icon: typeof Heart }> = {
+  courtship: { labelKey: "pairs.kindCourtship", tone: "danger", icon: Heart },
+  family: { labelKey: "pairs.kindFamily", tone: "positive", icon: UsersThree },
+  overlap: { labelKey: "pairs.kindOverlap", tone: "caution", icon: MapPin },
 };
 
 export function PairsView({
@@ -107,10 +108,7 @@ export function PairsView({
         {!filtered && <p className="text-sm text-muted">{t("pairs.loading")}</p>}
 
         {filtered && filtered.length === 0 && (
-          <div className="flex min-h-70 flex-col items-center justify-center rounded-2xl border border-dashed border-border-strong text-center">
-            <p className="text-[15px] font-medium text-foreground">{t("pairs.noMatch")}</p>
-            <p className="mt-1 text-sm text-muted">{t("pairs.tryDifferentFilter")}</p>
-          </div>
+          <EmptyState title={t("pairs.noMatch")} subtitle={t("pairs.tryDifferentFilter")} />
         )}
 
         {filtered && filtered.length > 0 && (
@@ -162,41 +160,42 @@ function PairCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.3) }}
-      className="flex items-start gap-4 rounded-xl border border-border bg-surface p-4"
     >
-      <div className="flex shrink-0 -space-x-3">
-        <TigerAvatar tiger={a} tigerId={pair.tiger_a} onOpenTiger={onOpenTiger} />
-        <TigerAvatar tiger={b} tigerId={pair.tiger_b} onOpenTiger={onOpenTiger} />
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => onOpenTiger(pair.tiger_a)} className="font-mono text-sm font-semibold text-foreground hover:underline">
-            {pair.tiger_a}
-          </button>
-          <span className="text-muted">&amp;</span>
-          <button onClick={() => onOpenTiger(pair.tiger_b)} className="font-mono text-sm font-semibold text-foreground hover:underline">
-            {pair.tiger_b}
-          </button>
-          <span className={`ml-1 flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wide ${style.bg} ${style.text}`}>
-            <Icon size={11} weight="fill" />
-            {t(style.labelKey)}
-          </span>
+      <Card padding="md" className="flex items-start gap-4">
+        <div className="flex shrink-0 -space-x-3">
+          <TigerAvatar tiger={a} tigerId={pair.tiger_a} onOpenTiger={onOpenTiger} />
+          <TigerAvatar tiger={b} tigerId={pair.tiger_b} onOpenTiger={onOpenTiger} />
         </div>
 
-        <p className="mt-1.5 text-xs text-muted">
-          {t("pairs.coOccurrences", { count: pair.co_occurrences })} &middot; {t("pairs.withinWindow", { hours: WINDOW_HOURS })}
-        </p>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => onOpenTiger(pair.tiger_a)} className="font-mono text-sm font-semibold text-foreground hover:underline">
+              {pair.tiger_a}
+            </button>
+            <span className="text-muted">&amp;</span>
+            <button onClick={() => onOpenTiger(pair.tiger_b)} className="font-mono text-sm font-semibold text-foreground hover:underline">
+              {pair.tiger_b}
+            </button>
+            <Pill tone={style.tone} className="ml-1 flex items-center gap-1">
+              <Icon size={11} weight="fill" />
+              {t(style.labelKey)}
+            </Pill>
+          </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <Camera size={12} className="text-muted" />
-          {pair.shared_stations.map((s) => (
-            <span key={s} className="rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-[11px] text-muted">
-              {s}
-            </span>
-          ))}
+          <p className="mt-1.5 text-xs text-muted">
+            {t("pairs.coOccurrences", { count: pair.co_occurrences })} &middot; {t("pairs.withinWindow", { hours: WINDOW_HOURS })}
+          </p>
+
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <Camera size={12} className="text-muted" />
+            {pair.shared_stations.map((s) => (
+              <span key={s} className="rounded-full bg-surface-sunken px-2 py-0.5 font-mono text-2xs text-muted">
+                {s}
+              </span>
+            ))}
+          </div>
         </div>
-      </div>
+      </Card>
     </motion.div>
   );
 }

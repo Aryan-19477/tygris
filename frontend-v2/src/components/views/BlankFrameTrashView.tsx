@@ -6,15 +6,13 @@ import {
   Trash,
   ArrowCounterClockwise,
   ImageBroken,
-  Clock,
-  HardDrive,
   WarningCircle,
   CheckSquare,
   Square,
   FunnelSimple,
-  ShieldCheck,
 } from "@phosphor-icons/react";
 import { TopBar } from "@/components/TopBar";
+import { Card, StatCard, EmptyState } from "@/components/ui";
 import {
   MOCK_FRAMES,
   DEFAULT_CONFIDENCE_THRESHOLD,
@@ -128,28 +126,23 @@ export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
       <div className="px-8 py-6 space-y-6">
         {/* Summary stats */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          <StatBlock
-            icon={<ImageBroken size={16} />}
+          <StatCard
             label={t("trash.framesRemoved")}
             value={String(purged.length + quarantined.length)}
           />
-          <StatBlock
-            icon={<HardDrive size={16} />}
+          <StatCard
             label={t("trash.spaceSaved")}
             value={spaceSavedKb > 0 ? formatBytes(spaceSavedKb) : "—"}
           />
-          <StatBlock
-            icon={<Clock size={16} />}
+          <StatCard
             label={t("trash.reviewTimeSaved")}
             value={formatDuration(timeSavedSec)}
           />
-          <StatBlock
-            icon={<ArrowCounterClockwise size={16} />}
+          <StatCard
             label={t("trash.restoredToDataset")}
             value={String(kept.length)}
           />
-          <StatBlock
-            icon={<ShieldCheck size={16} />}
+          <StatCard
             label={t("trash.inQuarantine")}
             value={String(quarantined.length)}
             tone={quarantined.length > 0 ? "caution" : undefined}
@@ -163,7 +156,7 @@ export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
         </div>
 
         {/* Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-4">
+        <Card padding="md" className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-4">
             <button
               onClick={selectAllVisible}
@@ -182,7 +175,7 @@ export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
 
             <div className="flex items-center gap-2">
               <FunnelSimple size={14} className="text-muted" />
-              <label className="font-mono text-[11px] uppercase tracking-wide text-muted">
+              <label className="font-mono text-2xs uppercase tracking-wide text-muted">
                 {t("trash.confidenceLabel", { pct: (threshold * 100).toFixed(0) })}
               </label>
               <input
@@ -236,15 +229,15 @@ export function BlankFrameTrashView({ stats }: { stats: Stats | null }) {
               </button>
             )}
           </div>
-        </div>
+        </Card>
 
         {/* Grid */}
         {visible.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border-strong py-16 text-center">
-            <ImageBroken size={28} className="text-muted" />
-            <p className="text-sm font-medium text-foreground">{t("trash.noFramesMatch")}</p>
-            <p className="text-xs text-muted">{t("trash.lowerThreshold")}</p>
-          </div>
+          <EmptyState
+            icon={<ImageBroken size={28} />}
+            title={t("trash.noFramesMatch")}
+            subtitle={t("trash.lowerThreshold")}
+          />
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             <AnimatePresence mode="popLayout">
@@ -310,7 +303,7 @@ function FrameCard({
         <img src={frame.thumbnail_src} alt="" className="h-full w-full object-cover" />
 
         {!frame.is_actually_blank && status === "quarantined" && (
-          <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-caution px-2 py-0.5 font-mono text-[10px] font-medium text-white">
+          <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-caution px-2 py-0.5 font-mono text-2xs font-medium text-white">
             <WarningCircle size={10} weight="fill" />
             {t("trash.checkThis")}
           </span>
@@ -325,17 +318,17 @@ function FrameCard({
           </button>
         )}
 
-        <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 font-mono text-[10px] font-medium text-white backdrop-blur-sm">
+        <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 font-mono text-2xs font-medium text-white backdrop-blur-sm">
           {t("trash.blankPct", { pct: (frame.confidence * 100).toFixed(0) })}
         </span>
 
         {isKept && (
-          <span className="absolute bottom-2 left-2 rounded-full bg-positive px-2 py-0.5 font-mono text-[10px] font-medium text-white">
+          <span className="absolute bottom-2 left-2 rounded-full bg-positive px-2 py-0.5 font-mono text-2xs font-medium text-white">
             {t("trash.kept")}
           </span>
         )}
         {isPurged && (
-          <span className="absolute bottom-2 left-2 rounded-full bg-danger px-2 py-0.5 font-mono text-[10px] font-medium text-white">
+          <span className="absolute bottom-2 left-2 rounded-full bg-danger px-2 py-0.5 font-mono text-2xs font-medium text-white">
             {t("trash.purged")}
           </span>
         )}
@@ -421,30 +414,6 @@ function PurgeConfirmDialog({
             Purge permanently
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function StatBlock({
-  icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  tone?: "caution";
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-surface p-4">
-      <div className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-muted">
-        {icon}
-        {label}
-      </div>
-      <div className={`mt-1.5 font-serif text-2xl font-medium tabular-nums ${tone === "caution" ? "text-caution" : "text-foreground"}`}>
-        {value}
       </div>
     </div>
   );

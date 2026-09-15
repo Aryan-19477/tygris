@@ -5,10 +5,8 @@ import {
   MapTrifold,
   Bell,
   PawPrint,
-  Camera,
   Fingerprint,
   FilmStrip,
-  Images,
   Heart,
   Binoculars,
   Trash,
@@ -30,24 +28,20 @@ function isGroup(entry: NavEntry): entry is GroupItem {
   return "children" in entry;
 }
 
-// Single-destination items stay flat; related views that used to compete for
-// top-level space (Station Health, screening, trash) now live inside the
-// "Captures" group as different lenses on the same incoming-photo/video
-// stream, and Pairs & Family Groups joins the catalogue and ranger reports
+// Attention Queue and Station Health used to be separate top-level pages;
+// they're now one "Captures" screen (see views/CapturesView.tsx) that reads
+// the same review-queue/alerts/stations data and lets a station chip filter
+// the queue instead of navigating away. Pass 1 Screening and Blank Frame
+// Trash stay separate for now (one's an upload tool, the other has no real
+// backend yet) — see docs/ux-mockups/platform-roadmap.html for the planned
+// next folds. Pairs & Family Groups joins the catalogue and ranger reports
 // under "Population".
 const NAV: NavEntry[] = [
   { id: "map", key: "nav.map", icon: MapTrifold },
   { id: "identify", key: "nav.identify", icon: Fingerprint },
-  {
-    groupKey: "nav.captures",
-    icon: Images,
-    children: [
-      { id: "attention", key: "nav.attention", icon: Bell },
-      { id: "stations", key: "nav.stations", icon: Camera },
-      { id: "screening", key: "nav.screening", icon: FilmStrip },
-      { id: "trash", key: "nav.trash", icon: Trash },
-    ],
-  },
+  { id: "captures", key: "nav.captures", icon: Bell },
+  { id: "screening", key: "nav.screening", icon: FilmStrip },
+  { id: "trash", key: "nav.trash", icon: Trash },
   {
     groupKey: "nav.population",
     icon: PawPrint,
@@ -76,7 +70,6 @@ export function Sidebar({
   const { t } = useLanguage();
   const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    "nav.captures": true,
     "nav.population": true,
   });
 
@@ -160,7 +153,7 @@ export function Sidebar({
                 >
                   <Icon size={17} weight={active ? "fill" : "regular"} />
                   {!collapsed && <span className="flex-1">{t(entry.key)}</span>}
-                  {!collapsed && entry.id === "attention" && attentionCount > 0 && (
+                  {!collapsed && entry.id === "captures" && attentionCount > 0 && (
                     <span
                       className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 font-mono text-[11px] font-medium ${
                         active ? "bg-nav-active text-nav" : "bg-priority-high text-white"
@@ -228,15 +221,6 @@ export function Sidebar({
                             >
                               <ChildIcon size={14} weight={active ? "fill" : "regular"} />
                               <span className="flex-1 truncate">{t(child.key)}</span>
-                              {child.id === "attention" && attentionCount > 0 && (
-                                <span
-                                  className={`flex h-4.5 min-w-4.5 items-center justify-center rounded-full px-1 font-mono text-[10px] font-medium ${
-                                    active ? "bg-nav-active text-nav" : "bg-priority-high text-white"
-                                  }`}
-                                >
-                                  {attentionCount}
-                                </span>
-                              )}
                               {active && <CaretRight size={12} weight="bold" />}
                             </button>
                           );

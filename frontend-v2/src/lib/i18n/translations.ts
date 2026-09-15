@@ -146,6 +146,13 @@ export const en = {
     blankFrameTrashDesc:
       "Review frames auto-classified as blank during ingestion, restore misclassified ones, or purge them for good.",
   },
+  captures: {
+    subtitle: "Review queue and camera network — in one place, not two.",
+    networkHeading: "Camera network",
+    showNetwork: "Show camera network",
+    hideNetwork: "Hide camera network",
+    clearStationFilter: "Clear filter",
+  },
   rangerReports: {
     title: "Ranger Reports",
     subtitle: "Live patrol observations from the field, cross-checked against known tiger territories",
@@ -441,6 +448,13 @@ export const hi: Dictionary = {
     blankFrameTrashDesc:
       "इनजेशन के दौरान स्वतः रिक्त वर्गीकृत फ्रेमों की समीक्षा करें, गलत वर्गीकृत फ्रेम पुनर्स्थापित करें, या उन्हें स्थायी रूप से हटाएं।",
   },
+  captures: {
+    subtitle: "समीक्षा सूची और कैमरा नेटवर्क — एक ही जगह, दो अलग पेजों में नहीं।",
+    networkHeading: "कैमरा नेटवर्क",
+    showNetwork: "कैमरा नेटवर्क दिखाएं",
+    hideNetwork: "कैमरा नेटवर्क छिपाएं",
+    clearStationFilter: "फ़िल्टर हटाएं",
+  },
   rangerReports: {
     title: "रेंजर रिपोर्ट",
     subtitle: "फील्ड से लाइव गश्त अवलोकन, ज्ञात बाघ क्षेत्रों के विरुद्ध जांचे गए",
@@ -733,6 +747,13 @@ export const mr: Dictionary = {
     blankFrameTrash: "रिकामे फ्रेम कचरा",
     blankFrameTrashDesc:
       "इनजेशन दरम्यान स्वयं-वर्गीकृत रिकाम्या फ्रेम्सचे पुनरावलोकन करा, चुकीने वर्गीकृत फ्रेम्स पुनर्संचयित करा, किंवा कायमस्वरूपी हटवा.",
+  },
+  captures: {
+    subtitle: "पुनरावलोकन यादी आणि कॅमेरा नेटवर्क — एकाच जागी, दोन वेगळ्या पानांवर नाही.",
+    networkHeading: "कॅमेरा नेटवर्क",
+    showNetwork: "कॅमेरा नेटवर्क दाखवा",
+    hideNetwork: "कॅमेरा नेटवर्क लपवा",
+    clearStationFilter: "फिल्टर काढा",
   },
   rangerReports: {
     title: "रेंजर अहवाल",

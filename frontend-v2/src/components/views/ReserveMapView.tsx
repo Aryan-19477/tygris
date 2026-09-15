@@ -262,7 +262,7 @@ function StatChip({ icon: Icon, label, value }: { icon: typeof PawPrint; label: 
     <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3.5 py-2">
       <Icon size={16} className="text-accent" />
       <div>
-        <div className="text-[10px] uppercase font-mono text-muted">{label}</div>
+        <div className="text-2xs uppercase font-mono text-muted">{label}</div>
         <div className="text-xs font-bold text-foreground">{value}</div>
       </div>
     </div>
