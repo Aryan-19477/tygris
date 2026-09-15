@@ -93,6 +93,27 @@ async def identify_image(
             result.update(_record_sighting(result["tiger_id"], station))
         except Exception as e:
             print(f"[routes_identify] Sighting recording note: {e}")
+    elif result.get("decision") == "needs_review":
+        try:
+            from backend.app.api.routes_review import enqueue_for_review
+
+            candidates = result.get("candidates") or []
+            top = candidates[0] if candidates else None
+            reason = (
+                f"Open-World Gating: top candidate {top['tiger_id']} at "
+                f"{round(top['similarity'] * 100)}% similarity, below the "
+                f"{round((result.get('auto_accept_threshold') or 0) * 100)}% auto-accept floor."
+                if top
+                else "No candidate cleared the review floor."
+            )
+            result["review_item_id"] = enqueue_for_review(
+                uploaded_image=result["uploaded_image"],
+                station_id=station,
+                candidates=candidates,
+                reason=reason,
+            )
+        except Exception as e:
+            print(f"[routes_identify] Review-queue recording note: {e}")
 
     return result
 

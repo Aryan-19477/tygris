@@ -116,10 +116,12 @@ def get_stats():
     Returns reserve-wide KPI counts and telemetry for dashboard widgets.
     """
     try:
-        from backend.app.api.routes_review import REVIEW_QUEUE
-        pending_count = len(REVIEW_QUEUE)
+        from backend.app.api.routes_review import _connect as _review_connect
+        _rconn = _review_connect()
+        pending_count = _rconn.execute("SELECT COUNT(*) FROM review_queue WHERE resolved = 0").fetchone()[0]
+        _rconn.close()
     except Exception:
-        pending_count = 2
+        pending_count = 0
 
     if not os.path.exists(DB_PATH):
         return {
