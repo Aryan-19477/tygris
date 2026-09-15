@@ -57,8 +57,17 @@ def get_supabase_client() -> Optional["Client"]:
 
     _client_init_attempted = True
 
+    if not os.environ.get("SUPABASE_URL"):
+        try:
+            from dotenv import load_dotenv
+            env_file = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
+            if os.path.exists(env_file):
+                load_dotenv(os.path.abspath(env_file))
+        except Exception:
+            pass
+
     url = os.environ.get("SUPABASE_URL", "").strip()
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip() or os.environ.get("SUPABASE_ANON_KEY", "").strip()
 
     if not url or not key:
         if not _warned_missing_config:

@@ -109,3 +109,15 @@ dev_log.txt
 !frontend-v2/public/**
 !docs/**
 !detection/runs/tiger_yolov8n/*.png
+
+# Flutter & Mobile artifacts
+.gradle/
+*/.gradle/
+**/android/.gradle/
+**/android/local.properties
+.dart_tool/
+*/.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+

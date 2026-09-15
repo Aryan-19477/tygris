@@ -269,11 +269,21 @@ export interface RangerPatrol {
   team_id?: string | null;
   beat_area?: string | null;
   patrol_type?: string | null;
+  patrol_method?: string | null;
   status?: string;
   start_time?: string | null;
   end_time?: string | null;
+  start_lat?: number | null;
+  start_lon?: number | null;
+  end_lat?: number | null;
+  end_lon?: number | null;
   distance_km?: number | null;
+  duration_seconds?: number | null;
+  coverage_area_km2?: number | null;
+  notes?: string | null;
+  sync_status?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 export type TerritoryCheckStatus =

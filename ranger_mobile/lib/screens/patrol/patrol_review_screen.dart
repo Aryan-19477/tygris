@@ -5,9 +5,11 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
+import '../../core/connectivity_status.dart';
 import '../../core/observation_meta.dart';
 import '../../core/sync_status.dart';
 import '../../core/theme.dart';
+import '../../data/gis_sync.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/observation.dart';
@@ -15,6 +17,7 @@ import '../../models/patrol.dart';
 import '../../services/active_patrol_controller.dart';
 import '../../services/sync_queue_service.dart';
 import '../../widgets/common.dart';
+import '../../widgets/reserve_map_layers.dart';
 
 /// Shown either as the end-of-patrol review (no [patrolId] — reads the
 /// just-ended draft from [ActivePatrolController], offers Save/Discard) or
@@ -70,6 +73,8 @@ class _PatrolReviewScreenState extends ConsumerState<PatrolReviewScreen> {
     }
 
     final points = patrol_.route.map((p) => ll.LatLng(p.lat, p.lng)).toList();
+    final bundle = ref.watch(gisSyncStateProvider).value?.bundle;
+    final isOnline = ref.watch(isOnlineProvider).value ?? true;
 
     return Scaffold(
       appBar: AppBar(
@@ -91,12 +96,12 @@ class _PatrolReviewScreenState extends ConsumerState<PatrolReviewScreen> {
                         initialCenter: points[points.length ~/ 2],
                         initialZoom: 13,
                         interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+                        backgroundColor: isOnline ? const Color(0xFFE0E0E0) : AppColors.mapOfflineBase,
                       ),
                       children: [
-                        TileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.tygris.ranger',
-                        ),
+                        if (reserveTileLayer(isOnline) != null) reserveTileLayer(isOnline)!,
+                        ...reserveBoundaryLayers(bundle),
+                        rangeLabelMarkers(bundle),
                         PolylineLayer(polylines: [
                           Polyline(points: points, strokeWidth: 4, color: AppColors.accent),
                         ]),
@@ -112,9 +117,13 @@ class _PatrolReviewScreenState extends ConsumerState<PatrolReviewScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _SummaryStat(label: l10n.t('patrol.distance'), value: '${patrol_.distanceKm.toStringAsFixed(2)} ${l10n.t('common.km')}'),
-                  _SummaryStat(label: l10n.t('patrol.duration'), value: _fmtDuration(patrol_.durationSeconds)),
-                  _SummaryStat(label: l10n.t('patrol.review.coverage'), value: patrol_.coverageAreaKm2 != null ? '${patrol_.coverageAreaKm2!.toStringAsFixed(1)} km²' : '—'),
+                  Expanded(child: _SummaryStat(label: l10n.t('patrol.distance'), value: '${patrol_.distanceKm.toStringAsFixed(2)} ${l10n.t('common.km')}')),
+                  Expanded(child: _SummaryStat(label: l10n.t('patrol.duration'), value: _fmtDuration(patrol_.durationSeconds))),
+                  Expanded(
+                    child: _SummaryStat(
+                        label: l10n.t('patrol.review.coverage'),
+                        value: patrol_.coverageAreaKm2 != null ? '${patrol_.coverageAreaKm2!.toStringAsFixed(1)} km²' : '—'),
+                  ),
                 ],
               ),
             ),
@@ -226,9 +235,16 @@ class _SummaryStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(value, style: Theme.of(context).textTheme.titleMedium),
-        Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.muted)),
+        Text(value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium),
+        Text(label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.muted)),
       ],
     );
   }

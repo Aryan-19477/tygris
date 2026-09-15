@@ -38,6 +38,10 @@ String observationTypeLabelKey(ObservationType type) => 'obs.${type.name}';
 String severityLabelKey(ObservationSeverity severity) =>
     'obs.severity.${severity.name}';
 
+/// Label key for an auto-classified zone ('CORE'/'BUFFER'/'OUTSIDE' — see
+/// `core/geo_context.dart#classifyZone`).
+String zoneLabelKey(String zone) => 'obs.zone.${zone.toLowerCase()}';
+
 Color severityColor(ObservationSeverity severity) {
   switch (severity) {
     case ObservationSeverity.info:

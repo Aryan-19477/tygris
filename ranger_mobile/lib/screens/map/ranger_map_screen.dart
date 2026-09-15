@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
+import '../../core/connectivity_status.dart';
 import '../../core/map_focus.dart';
 import '../../core/observation_meta.dart';
 import '../../core/theme.dart';
@@ -21,6 +22,7 @@ import '../../services/location_status.dart';
 import '../../widgets/common.dart';
 import '../../widgets/gis_sync_banner.dart';
 import '../../widgets/observation_detail_sheet.dart';
+import '../../widgets/reserve_map_layers.dart';
 
 /// The single reserve map used everywhere in the app: reuses the ported
 /// [GISStation]/[GISMapBundle]-shaped data for camera stations + zone
@@ -45,6 +47,7 @@ class _RangerMapScreenState extends ConsumerState<RangerMapScreen> {
   bool _showTasks = true;
   bool _showZones = true;
   bool _showMe = true;
+  bool _showTerritories = false;
   Timer? _positionRefreshTimer;
 
   @override
@@ -70,7 +73,8 @@ class _RangerMapScreenState extends ConsumerState<RangerMapScreen> {
     final l10n = ref.watch(appLocalizationsProvider);
     final stations = ref.watch(stationsStreamProvider).value ?? const <GISStation>[];
     final gisSync = ref.watch(gisSyncStateProvider).value;
-    final liveSubRegions = gisSync?.bundle?.subRegions ?? const [];
+    final bundle = gisSync?.bundle;
+    final isOnline = ref.watch(isOnlineProvider).value ?? true;
     final observations = ref.watch(observationsStreamProvider).value ?? const <Observation>[];
     final tasks = ref.watch(tasksStreamProvider).value ?? const <TaskItem>[];
     final patrols = ref.watch(patrolsStreamProvider).value ?? const <Patrol>[];
@@ -134,43 +138,24 @@ class _RangerMapScreenState extends ConsumerState<RangerMapScreen> {
         children: [
           FlutterMap(
             mapController: _mapController,
-            options: MapOptions(initialCenter: center, initialZoom: 12.5),
+            options: MapOptions(
+              initialCenter: center,
+              initialZoom: 12.5,
+              backgroundColor: isOnline ? const Color(0xFFE0E0E0) : AppColors.mapOfflineBase,
+            ),
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.tygris.ranger',
-              ),
+              // Live OSM tiles when online; when offline, no tile layer at
+              // all — the flat `backgroundColor` above shows through
+              // instead of blank/broken tile squares, so the boundary
+              // polygons/labels/markers still render cleanly.
+              if (reserveTileLayer(isOnline) != null) reserveTileLayer(isOnline)!,
+              if (_showZones) ...reserveBoundaryLayers(bundle),
               if (_showRoute && routePoints.length > 1)
                 PolylineLayer(polylines: [
                   Polyline(points: routePoints, strokeWidth: 4, color: AppColors.accent),
                 ]),
-              if (_showZones)
-                MarkerLayer(markers: [
-                  // Prefer the live sub-regions from the real GIS bundle
-                  // (`/api/gis/bundle`); fall back to the offline demo
-                  // labels only until the first successful sync lands.
-                  for (final z in liveSubRegions.isNotEmpty
-                      ? liveSubRegions.map((s) => ZoneLabel(name: s.name, centerLat: s.centerLat, centerLng: s.centerLng))
-                      : seedZoneLabels)
-                    Marker(
-                      point: ll.LatLng(z.centerLat, z.centerLng),
-                      width: 120,
-                      height: 28,
-                      child: IgnorePointer(
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.foreground.withValues(alpha: 0.75),
-                              borderRadius: BorderRadius.circular(AppRadius.sm),
-                            ),
-                            child: Text(z.name,
-                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
-                          ),
-                        ),
-                      ),
-                    ),
-                ]),
+              if (_showTerritories) territoryLayer(bundle),
+              if (_showZones) rangeLabelMarkers(bundle),
               if (_showStations)
                 MarkerLayer(markers: [
                   for (final s in stations)
@@ -251,7 +236,18 @@ class _RangerMapScreenState extends ConsumerState<RangerMapScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.sm),
-                  child: Align(alignment: Alignment.centerLeft, child: GisSyncBanner(l10n: l10n, stationCount: stations.length)),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Wrap(
+                      spacing: AppSpace.sm,
+                      runSpacing: AppSpace.sm,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        GisSyncBanner(l10n: l10n, stationCount: stations.length),
+                        OfflineMapModeChip(l10n: l10n),
+                      ],
+                    ),
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
@@ -268,6 +264,8 @@ class _RangerMapScreenState extends ConsumerState<RangerMapScreen> {
                         _LayerChip(label: l10n.t('map.layer.tasks'), value: _showTasks, onChanged: (v) => setState(() => _showTasks = v)),
                         const SizedBox(width: AppSpace.sm),
                         _LayerChip(label: l10n.t('map.layer.zones'), value: _showZones, onChanged: (v) => setState(() => _showZones = v)),
+                        const SizedBox(width: AppSpace.sm),
+                        _LayerChip(label: l10n.t('map.layer.territories'), value: _showTerritories, onChanged: (v) => setState(() => _showTerritories = v)),
                         const SizedBox(width: AppSpace.sm),
                         _LayerChip(label: l10n.t('map.layer.currentLocation'), value: _showMe, onChanged: (v) => setState(() => _showMe = v)),
                       ],
@@ -294,7 +292,14 @@ class _RangerMapScreenState extends ConsumerState<RangerMapScreen> {
             children: [
               Row(
                 children: [
-                  Text(s.cameraId, style: Theme.of(context).textTheme.titleMedium),
+                  Expanded(
+                    child: Text(
+                      s.cameraId,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                  ),
                   const SizedBox(width: AppSpace.sm),
                   StatusPill(label: l10n.t(stationStatusLabelKey(s.operationalStatus)), color: stationStatusColor(s.operationalStatus)),
                 ],

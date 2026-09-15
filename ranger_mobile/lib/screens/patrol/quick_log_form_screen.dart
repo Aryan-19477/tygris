@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/geo_context.dart';
 import '../../core/ids.dart';
 import '../../core/observation_meta.dart';
 import '../../core/sync_status.dart';
 import '../../core/theme.dart';
+import '../../data/gis_sync.dart';
 import '../../data/repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/observation.dart';
@@ -45,6 +47,14 @@ class _QuickLogFormScreenState extends ConsumerState<QuickLogFormScreen> {
   bool _saving = false;
   final _now = DateTime.now();
 
+  // Auto-attached context (see `core/geo_context.dart`) — computed the
+  // instant GPS is captured below, never entered by the ranger.
+  String? _zoneName;
+  String? _rangeName;
+  String? _nearestStationId;
+  double? _nearestStationDistanceM;
+  double? _distanceFromRouteM;
+
   static const Map<ObservationType, List<String>> _subtypes = {
     ObservationType.wildlifeSighting: ['Tiger', 'Leopard', 'Deer', 'Wild boar', 'Elephant', 'Other'],
     ObservationType.wildlifeSign: ['Pugmarks', 'Scat', 'Scratch marks', 'Kill remains', 'Call heard'],
@@ -79,6 +89,7 @@ class _QuickLogFormScreenState extends ConsumerState<QuickLogFormScreen> {
         _lng = patrol.route.last.lng;
         _locating = false;
       });
+      _computeGeoContext();
       return;
     }
     setState(() {
@@ -95,6 +106,7 @@ class _QuickLogFormScreenState extends ConsumerState<QuickLogFormScreen> {
         _lng = position.longitude;
         _locating = false;
       });
+      _computeGeoContext();
     } catch (_) {
       if (!mounted) return;
       // Never fabricate a location for a real field report — an
@@ -110,6 +122,58 @@ class _QuickLogFormScreenState extends ConsumerState<QuickLogFormScreen> {
       });
     }
   }
+
+  /// Computes range/zone, nearest camera station, and (mid-patrol only)
+  /// distance-from-route the instant GPS lands — fully offline, from the
+  /// already-bundled GIS dataset (see `core/geo_context.dart`). The ranger
+  /// never triggers this and never edits its output; it's shown read-only
+  /// below.
+  void _computeGeoContext() {
+    if (_lat == null || _lng == null) return;
+    final lat = _lat!;
+    final lng = _lng!;
+
+    final bundle = ref.read(gisSyncStateProvider).value?.bundle;
+    String? zoneName;
+    String? rangeName;
+    if (bundle != null) {
+      final classification = classifyZone(
+        lat: lat,
+        lng: lng,
+        coreBoundary: bundle.coreBoundary,
+        bufferBoundary: bundle.bufferBoundary,
+        subRegions: bundle.subRegions,
+      );
+      zoneName = classification.zone;
+      rangeName = classification.rangeName;
+    }
+
+    final stations = ref.read(stationsStreamProvider).value ?? const [];
+    final nearest = findNearestStation(lat: lat, lng: lng, stations: stations);
+
+    // Distance-from-route only applies mid-patrol (`patrolId` set) — a
+    // stand-alone Quick Report has no route to be near, so this stays
+    // null rather than fabricated.
+    double? distanceFromRouteM;
+    if (widget.patrolId != null) {
+      final patrol = ref.read(activePatrolControllerProvider);
+      if (patrol != null && patrol.route.isNotEmpty) {
+        distanceFromRouteM = distanceFromRouteMeters(lat: lat, lng: lng, route: patrol.route);
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _zoneName = zoneName;
+      _rangeName = rangeName;
+      _nearestStationId = nearest?.station.cameraId;
+      _nearestStationDistanceM = nearest != null ? nearest.distanceKm * 1000 : null;
+      _distanceFromRouteM = distanceFromRouteM;
+    });
+  }
+
+  String _formatDistanceM(double meters) =>
+      meters < 1000 ? '${meters.round()} m' : '${(meters / 1000).toStringAsFixed(2)} km';
 
   Future<void> _addPhoto() async {
     try {
@@ -128,25 +192,11 @@ class _QuickLogFormScreenState extends ConsumerState<QuickLogFormScreen> {
     final ranger = ref.read(currentRangerProvider);
     final id = newId();
     final photoIds = <String>[];
-    final photoRepo = ref.read(photoRepositoryProvider);
-    for (final photo in _photos) {
-      final photoId = newId();
-      await photoRepo.save(Photo(
-        id: photoId,
-        localPath: photo.path,
-        entityType: 'observation',
-        entityId: id,
-        capturedAt: DateTime.now(),
-        syncStatus: SyncStatus.local,
-      ));
-      await ref.read(syncQueueServiceProvider).enqueue(entityType: 'photo', entityId: photoId);
-      photoIds.add(photoId);
-    }
 
     final observation = Observation(
       id: id,
       patrolId: widget.patrolId,
-      rangerId: ranger?.id ?? 'unknown',
+      rangerId: ranger?.id ?? '19c676e1-e765-4fb2-9c63-48aac35ee8f0',
       type: widget.category,
       subtype: _subtype,
       severity: _severity,
@@ -158,6 +208,11 @@ class _QuickLogFormScreenState extends ConsumerState<QuickLogFormScreen> {
       syncStatus: SyncStatus.local,
       createdAt: _now,
       updatedAt: _now,
+      zoneName: _zoneName,
+      rangeName: _rangeName,
+      nearestStationId: _nearestStationId,
+      nearestStationDistanceM: _nearestStationDistanceM,
+      distanceFromRouteM: _distanceFromRouteM,
     );
 
     await ref.read(observationRepositoryProvider).save(observation);
@@ -167,8 +222,31 @@ class _QuickLogFormScreenState extends ConsumerState<QuickLogFormScreen> {
     await ref.read(syncQueueServiceProvider).enqueue(
           entityType: 'observation',
           entityId: id,
-          priority: _severity == ObservationSeverity.critical ? 10 : 0,
+          priority: _severity == ObservationSeverity.critical ? 10 : 5,
         );
+
+    final photoRepo = ref.read(photoRepositoryProvider);
+    for (final photo in _photos) {
+      final photoId = newId();
+      await photoRepo.save(Photo(
+        id: photoId,
+        localPath: photo.path,
+        entityType: 'observation',
+        entityId: id,
+        capturedAt: DateTime.now(),
+        syncStatus: SyncStatus.local,
+      ));
+      await ref.read(syncQueueServiceProvider).enqueue(
+            entityType: 'photo',
+            entityId: photoId,
+            priority: 0,
+          );
+      photoIds.add(photoId);
+    }
+    // Update observation with photoIds
+    if (photoIds.isNotEmpty) {
+      await ref.read(observationRepositoryProvider).save(observation.copyWith(photoIds: photoIds));
+    }
 
     if (!mounted) return;
     context.pop();
@@ -222,6 +300,44 @@ class _QuickLogFormScreenState extends ConsumerState<QuickLogFormScreen> {
                 ],
               ),
             ),
+            if (_lat != null && _lng != null) ...[
+              const SizedBox(height: AppSpace.md),
+              Bezel(
+                color: AppColors.surfaceSunken,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SectionLabel(l10n.t('obs.autoContextLabel')),
+                    const SizedBox(height: AppSpace.sm),
+                    _readonlyRow(
+                      Icons.map_outlined,
+                      l10n.t('obs.rangeLabel'),
+                      _rangeName ?? '—',
+                    ),
+                    _readonlyRow(
+                      Icons.layers_outlined,
+                      l10n.t('obs.zoneLabel'),
+                      _zoneName != null ? l10n.t(zoneLabelKey(_zoneName!)) : '—',
+                    ),
+                    _readonlyRow(
+                      Icons.videocam_outlined,
+                      l10n.t('obs.nearestStationLabel'),
+                      _nearestStationId != null && _nearestStationDistanceM != null
+                          ? '$_nearestStationId · ${_formatDistanceM(_nearestStationDistanceM!)}'
+                          : '—',
+                    ),
+                    if (widget.patrolId != null)
+                      _readonlyRow(
+                        Icons.route_outlined,
+                        l10n.t('obs.distanceFromRouteLabel'),
+                        _distanceFromRouteM != null
+                            ? _formatDistanceM(_distanceFromRouteM!)
+                            : '—',
+                      ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpace.xl),
             if (subtypes.isNotEmpty) ...[
               SectionLabel(l10n.t('obs.subtype')),

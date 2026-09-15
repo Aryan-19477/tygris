@@ -226,11 +226,15 @@ class IconChoiceChip extends StatelessWidget {
           children: [
             Icon(icon, size: 18, color: selected ? c : AppColors.mutedStrong),
             const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: selected ? c : AppColors.foreground,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? c : AppColors.foreground,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                ),
               ),
             ),
           ],
@@ -282,10 +286,13 @@ class BigTile extends StatelessWidget {
               child: Icon(icon, color: c, size: 20),
             ),
             const SizedBox(height: AppSpace.sm),
-            Text(
-              label,
-              maxLines: 2,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              ),
             ),
           ],
         ),

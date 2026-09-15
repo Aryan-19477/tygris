@@ -58,6 +58,11 @@ class Observation {
     required this.updatedAt,
     this.title,
     this.followUpRequired = false,
+    this.zoneName,
+    this.rangeName,
+    this.nearestStationId,
+    this.nearestStationDistanceM,
+    this.distanceFromRouteM,
   });
 
   final String id;
@@ -78,6 +83,28 @@ class Observation {
   /// Optional short title — mainly used for stand-alone Reports.
   final String? title;
   final bool followUpRequired;
+
+  // --- Auto-attached context (computed once, at GPS-capture time, in
+  // `quick_log_form_screen.dart` via `core/geo_context.dart`) — never
+  // ranger-entered. All nullable because classification can fail to
+  // resolve (e.g. no GIS bundle loaded yet, or truly no patrol route). ---
+
+  /// 'CORE', 'BUFFER', or 'OUTSIDE' — see `geo_context.dart#classifyZone`.
+  final String? zoneName;
+
+  /// Name of the nearest reserve sub-region ("range"), by distance to its
+  /// center — set even when [zoneName] is 'OUTSIDE'.
+  final String? rangeName;
+
+  /// `camera_id` of the nearest [GISStation] by haversine distance.
+  final String? nearestStationId;
+  final double? nearestStationDistanceM;
+
+  /// Shortest distance from this observation to the active patrol's
+  /// recorded route, in meters. Only set when [patrolId] is non-null
+  /// (mid-patrol quick-log) — left `null` for stand-alone Quick Reports,
+  /// never fabricated.
+  final double? distanceFromRouteM;
 
   DateTime get timestamp => DateTime.fromMillisecondsSinceEpoch(timestampMs);
 
@@ -107,6 +134,11 @@ class Observation {
         updatedAt: updatedAt ?? DateTime.now(),
         title: title,
         followUpRequired: followUpRequired,
+        zoneName: zoneName,
+        rangeName: rangeName,
+        nearestStationId: nearestStationId,
+        nearestStationDistanceM: nearestStationDistanceM,
+        distanceFromRouteM: distanceFromRouteM,
       );
 
   factory Observation.fromJson(Map<String, dynamic> j) => Observation(
@@ -128,6 +160,11 @@ class Observation {
         updatedAt: DateTime.parse(j['updated_at'] as String),
         title: j['title'] as String?,
         followUpRequired: j['follow_up_required'] as bool? ?? false,
+        zoneName: j['zone_name'] as String?,
+        rangeName: j['range_name'] as String?,
+        nearestStationId: j['nearest_station_id'] as String?,
+        nearestStationDistanceM: (j['nearest_station_distance_m'] as num?)?.toDouble(),
+        distanceFromRouteM: (j['distance_from_route_m'] as num?)?.toDouble(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -147,5 +184,10 @@ class Observation {
         'updated_at': updatedAt.toIso8601String(),
         'title': title,
         'follow_up_required': followUpRequired,
+        'zone_name': zoneName,
+        'range_name': rangeName,
+        'nearest_station_id': nearestStationId,
+        'nearest_station_distance_m': nearestStationDistanceM,
+        'distance_from_route_m': distanceFromRouteM,
       };
 }
