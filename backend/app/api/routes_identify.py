@@ -35,9 +35,33 @@ async def model_status():
     }
 
 
-def _record_sighting(tiger_id: str, station: Optional[str], flank: str = "Left") -> dict:
+CAPTURES_DIR = os.path.join(PROJECT_ROOT, "backend", "data", "captures")
+
+
+def _save_capture_image(event_id: str, image_bytes: bytes) -> str:
+    """Persists the actual captured photo to disk so it can be shown later
+    in the Capture Log — previously every recorded sighting kept metadata
+    only and threw the image away, so there was nowhere to browse real
+    frames. Returns the path clients should fetch as `/captures/<file>`
+    (served by the StaticFiles mount in main.py)."""
+    os.makedirs(CAPTURES_DIR, exist_ok=True)
+    filename = f"{event_id}.jpg"
+    with open(os.path.join(CAPTURES_DIR, filename), "wb") as f:
+        f.write(image_bytes)
+    return f"/captures/{filename}"
+
+
+def _record_sighting(
+    tiger_id: str,
+    station: Optional[str],
+    flank: str = "Left",
+    image_bytes: Optional[bytes] = None,
+) -> dict:
     """Logs an identified sighting to the real sightings table at the
-    station's actual coordinates, same as the previous pipeline did."""
+    station's actual coordinates, same as the previous pipeline did. When
+    the caller has the actual photo (a live /api/identify call, or a
+    resolved review item), it's saved to disk and linked via image_path so
+    the Capture Log has a real frame to show, not just metadata."""
     import sqlite3
     import datetime
 
@@ -54,12 +78,13 @@ def _record_sighting(tiger_id: str, station: Optional[str], flank: str = "Left")
 
     ts = datetime.datetime.now().isoformat(timespec="seconds")
     evt_id = f"EVT_LIVE_{uuid.uuid4().hex[:6].upper()}"
+    image_path = _save_capture_image(evt_id, image_bytes) if image_bytes else None
 
     cur.execute("""
         INSERT INTO sightings
-        (event_id, tiger_id, camera_id, timestamp, latitude, longitude, zone, flank_side, speed_kmh, image_quality, alert_level, threat_reason)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (evt_id, tiger_id, st_id, ts, lat, lon, zone, flank, 3.5, 0.95, "SAFE" if zone == "CORE" else "CAUTION", f"Live Camera Scan at {st_id}"))
+        (event_id, tiger_id, camera_id, timestamp, latitude, longitude, zone, flank_side, speed_kmh, image_quality, alert_level, threat_reason, image_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (evt_id, tiger_id, st_id, ts, lat, lon, zone, flank, 3.5, 0.95, "SAFE" if zone == "CORE" else "CAUTION", f"Live Camera Scan at {st_id}", image_path))
 
     cur.execute("UPDATE tiger_profiles SET total_captures = total_captures + 1 WHERE tiger_id = ?", (tiger_id,))
     conn.commit()
@@ -90,7 +115,7 @@ async def identify_image(
 
     if result.get("decision") == "auto_match" and result.get("tiger_id"):
         try:
-            result.update(_record_sighting(result["tiger_id"], station))
+            result.update(_record_sighting(result["tiger_id"], station, image_bytes=contents))
         except Exception as e:
             print(f"[routes_identify] Sighting recording note: {e}")
     elif result.get("decision") == "needs_review":

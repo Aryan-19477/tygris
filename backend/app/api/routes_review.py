@@ -125,6 +125,7 @@ def resolve_review_item(item_id: str, payload: ReviewResolutionRequest):
     to the same `sightings`/`tiger_profiles` tables the rest of the app
     reads from, instead of discarding the human's decision."""
     from backend.app.api.routes_identify import _record_sighting
+    import base64
 
     conn = _connect()
     conn.row_factory = sqlite3.Row
@@ -162,7 +163,14 @@ def resolve_review_item(item_id: str, payload: ReviewResolutionRequest):
     conn.close()
 
     try:
-        _record_sighting(assigned_id, item["station_id"], payload.flank_side or "Left")
+        image_bytes = None
+        uploaded = item.get("uploaded_image") or ""
+        if uploaded.startswith("data:") and "," in uploaded:
+            try:
+                image_bytes = base64.b64decode(uploaded.split(",", 1)[1])
+            except Exception:
+                image_bytes = None
+        _record_sighting(assigned_id, item["station_id"], payload.flank_side or "Left", image_bytes=image_bytes)
     except Exception as e:
         # The review decision is already persisted above even if the sighting
         # write hiccups (e.g. unknown station) — don't lose the human's call.

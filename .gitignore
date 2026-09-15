@@ -4,6 +4,11 @@
 # Excludes raw datasets, model weights, and legacy/experimental folders
 # ==========================================
 
+# Runtime-captured sighting photos (saved by routes_identify.py's
+# _record_sighting) — grows unbounded as the app is used, unlike the
+# curated seed DB, so it isn't tracked.
+/backend/data/captures/
+
 # Datasets & Heavy Experiments (Kept locally on disk, excluded from Git)
 /ntlnp_raw/
 /final_data/
