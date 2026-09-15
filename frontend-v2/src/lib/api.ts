@@ -1,10 +1,14 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:8420";
 
 /** Capture Log image_url values are backend-relative paths (e.g.
- * "/captures/EVT_xxx.jpg") — must be joined with the API origin, not the
- * frontend's own, since they're served by FastAPI's static mount. */
+ * "/captures/EVT_xxx.jpg") or frontend-relative public paths (e.g.
+ * "/tigers/T103_F.jpg"). When given a /tigers/ path or full URL,
+ * resolve directly without prepending API_BASE. */
 export function captureImageSrc(path: string | null): string | null {
-  return path ? `${API_BASE}${path}` : null;
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) return path;
+  if (path.startsWith("/tigers/")) return path;
+  return `${API_BASE}${path}`;
 }
 
 export type Decision = "auto_match" | "needs_review";

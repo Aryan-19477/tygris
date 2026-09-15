@@ -55,7 +55,7 @@ def list_captures(
     cur.execute(
         f"""
         SELECT s.event_id, s.tiger_id, t.name AS tiger_name, s.camera_id, s.zone,
-               s.timestamp, s.flank_side, s.alert_level, s.image_path
+               s.timestamp, s.flank_side, s.alert_level, s.image_path, t.thumbnail
         FROM sightings s
         LEFT JOIN tiger_profiles t ON t.tiger_id = s.tiger_id
         {where}
@@ -79,7 +79,7 @@ def list_captures(
             "timestamp": r["timestamp"],
             "flank_side": r["flank_side"],
             "alert_level": r["alert_level"],
-            "image_url": r["image_path"],
+            "image_url": r["image_path"] or r["thumbnail"] or (f"/tigers/{r['tiger_id']}.jpg" if r["tiger_id"] else None),
         }
         for r in rows
     ]

@@ -85,52 +85,56 @@ export function Sidebar({
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex h-dvh shrink-0 -translate-x-full flex-col border-r border-nav-border bg-nav text-nav-foreground transition-[transform,width] duration-300 ease-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex h-dvh shrink-0 -translate-x-full flex-col border-r border-zinc-200/80 bg-white text-zinc-900 transition-[transform,width] duration-300 ease-out lg:static lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : ""
         } ${collapsed ? "w-[76px]" : "w-64"}`}
       >
         <button
           onClick={onMobileClose}
-          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-nav-muted hover:bg-nav-active-bg/60 hover:text-nav-foreground lg:hidden"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 lg:hidden"
         >
           <X size={16} />
         </button>
 
-        <button
-          onClick={() => setCollapsed((v) => !v)}
-          title={collapsed ? t("nav.expand") : t("nav.collapse")}
-          className="absolute -right-3 top-8 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-nav-border bg-surface text-muted shadow-sm hover:text-foreground lg:flex"
-        >
-          {collapsed ? <CaretRight size={12} weight="bold" /> : <CaretLeft size={12} weight="bold" />}
-        </button>
-
-        <div className={`flex items-center gap-3 px-6 py-6 ${collapsed ? "justify-center px-0" : ""}`}>
-          <svg
-            viewBox="0 0 40 40"
-            className="h-9 w-9 shrink-0"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <circle cx="20" cy="20" r="19" stroke="var(--nav-active)" strokeWidth="1" />
-            <circle cx="20" cy="20" r="15.5" stroke="var(--nav-active)" strokeWidth="0.6" opacity="0.5" />
-            <path
-              d="M14 27V13h5.6c2.9 0 4.9 1.8 4.9 4.4 0 2.6-2 4.4-4.9 4.4H17v5.2h-3Zm3-7.6h2.3c1.3 0 2.1-.7 2.1-2s-.8-2-2.1-2H17v4Z"
-              fill="var(--nav-active)"
-            />
-          </svg>
-          {!collapsed && (
-            <div className="min-w-0">
-              <div className="font-mono text-[13px] font-semibold uppercase leading-tight tracking-wider text-nav-foreground">
-                Pench
-                <br />
-                Intelligence
+        {/* Brand Header */}
+        <div className={`flex items-center gap-3 px-3.5 pt-4 pb-2.5 ${collapsed ? "justify-center px-2 flex-col gap-2 pt-4" : ""}`}>
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-md transition-transform hover:scale-[1.02]">
+            <svg viewBox="0 0 24 24" className="h-6 w-6 text-white" fill="none">
+              <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2.2" />
+              <circle cx="12" cy="12" r="3.2" fill="currentColor" />
+            </svg>
+          </div>
+          {!collapsed ? (
+            <>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-sm tracking-tight text-zinc-900 leading-tight">
+                  Pench Intelligence
+                </div>
+                <div className="text-[11px] text-zinc-400 font-medium">
+                  {t("nav.department")}
+                </div>
               </div>
-              <div className="mt-1 text-[11px] text-nav-muted">{t("nav.department")}</div>
-            </div>
+              <button
+                onClick={() => setCollapsed(true)}
+                title={t("nav.collapse")}
+                className="hidden lg:flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-400 shadow-2xs hover:border-zinc-300 hover:text-zinc-800 transition-all active:scale-95"
+              >
+                <CaretLeft size={13} weight="bold" />
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setCollapsed(false)}
+              title={t("nav.expand")}
+              className="hidden lg:flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-400 shadow-2xs hover:border-zinc-300 hover:text-zinc-800 transition-all active:scale-95"
+            >
+              <CaretRight size={12} weight="bold" />
+            </button>
           )}
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 pt-4">
+        {/* Navigation Items */}
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 pt-2">
           {NAV.map((entry) => {
             if (!isGroup(entry)) {
               const Icon = entry.icon;
@@ -143,22 +147,24 @@ export function Sidebar({
                     onMobileClose?.();
                   }}
                   title={collapsed ? t(entry.key) : undefined}
-                  className={`flex w-full items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left text-sm font-semibold transition-all ${
+                  className={`group flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-sm transition-all duration-150 ${
                     collapsed ? "justify-center px-0" : ""
                   } ${
                     active
-                      ? "border-nav-active bg-nav-active-bg text-nav-active shadow-sm"
-                      : "border-transparent text-nav-muted hover:border-nav-border hover:bg-nav-active-bg/50 hover:text-nav-foreground"
+                      ? "bg-zinc-100 font-semibold text-zinc-900 shadow-2xs"
+                      : "text-zinc-600 font-medium hover:bg-zinc-100/70 hover:text-zinc-950"
                   }`}
                 >
-                  <Icon size={17} weight={active ? "fill" : "regular"} />
-                  {!collapsed && <span className="flex-1">{t(entry.key)}</span>}
+                  <Icon
+                    size={18}
+                    weight={active ? "fill" : "regular"}
+                    className={`shrink-0 transition-colors ${
+                      active ? "text-zinc-900" : "text-zinc-500 group-hover:text-zinc-800"
+                    }`}
+                  />
+                  {!collapsed && <span className="flex-1 truncate">{t(entry.key)}</span>}
                   {!collapsed && entry.id === "captures" && attentionCount > 0 && (
-                    <span
-                      className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1 font-mono text-[11px] font-medium ${
-                        active ? "bg-nav-active text-nav" : "bg-priority-high text-white"
-                      }`}
-                    >
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-lg bg-emerald-100 px-2 font-mono text-xs font-bold text-emerald-800 shadow-2xs">
                       {attentionCount}
                     </span>
                   )}
@@ -171,26 +177,34 @@ export function Sidebar({
             const open = collapsed ? true : openGroups[entry.groupKey];
 
             return (
-              <div key={entry.groupKey}>
+              <div key={entry.groupKey} className="space-y-0.5">
                 <button
                   onClick={() => (collapsed ? setCollapsed(false) : toggleGroup(entry.groupKey))}
                   title={collapsed ? t(entry.groupKey) : undefined}
-                  className={`flex w-full items-center gap-3 rounded-xl border-2 px-3 py-2.5 text-left text-sm font-semibold transition-all ${
+                  className={`group flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-sm transition-all duration-150 ${
                     collapsed ? "justify-center px-0" : ""
                   } ${
-                    hasActiveChild
-                      ? "border-transparent bg-nav-active-bg/60 text-nav-foreground"
-                      : "border-transparent text-nav-muted hover:bg-nav-active-bg/50 hover:text-nav-foreground"
+                    hasActiveChild || open
+                      ? "bg-zinc-100/70 font-semibold text-zinc-900"
+                      : "text-zinc-600 font-medium hover:bg-zinc-100/70 hover:text-zinc-950"
                   }`}
                 >
-                  <GroupIcon size={17} weight={hasActiveChild ? "fill" : "regular"} />
+                  <GroupIcon
+                    size={18}
+                    weight={hasActiveChild ? "fill" : "regular"}
+                    className={`shrink-0 transition-colors ${
+                      hasActiveChild ? "text-zinc-900" : "text-zinc-500 group-hover:text-zinc-800"
+                    }`}
+                  />
                   {!collapsed && (
                     <>
-                      <span className="flex-1">{t(entry.groupKey)}</span>
+                      <span className="flex-1 truncate">{t(entry.groupKey)}</span>
                       <CaretDown
-                        size={13}
+                        size={14}
                         weight="bold"
-                        className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                        className={`text-zinc-400 transition-transform duration-200 ${
+                          open ? "rotate-180" : ""
+                        }`}
                       />
                     </>
                   )}
@@ -202,27 +216,52 @@ export function Sidebar({
                     style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
                   >
                     <div className="min-h-0">
-                      <div className="relative ml-[22px] mt-1 space-y-0.5 border-l border-nav-border py-1 pl-4">
+                      <div className="relative ml-6 pl-3.5 py-1 space-y-1">
+                        {/* Continuous vertical guide line that terminates at the last child's curve */}
+                        <div
+                          className="pointer-events-none absolute left-0 top-0 w-px bg-zinc-200"
+                          style={{ bottom: "18px" }}
+                        />
+
                         {entry.children.map((child) => {
                           const ChildIcon = child.icon;
                           const active = view === child.id;
                           return (
-                            <button
-                              key={child.id}
-                              onClick={() => {
-                                onNavigate(child.id);
-                                onMobileClose?.();
-                              }}
-                              className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors ${
-                                active
-                                  ? "bg-nav-active-bg font-semibold text-nav-active"
-                                  : "text-nav-muted hover:bg-nav-active-bg/50 hover:text-nav-foreground"
-                              }`}
-                            >
-                              <ChildIcon size={14} weight={active ? "fill" : "regular"} />
-                              <span className="flex-1 truncate">{t(child.key)}</span>
-                              {active && <CaretRight size={12} weight="bold" />}
-                            </button>
+                            <div key={child.id} className="relative flex items-center">
+                              {/* Curved branch connector from vertical line to item */}
+                              <div
+                                className="pointer-events-none absolute -left-3.5 top-0 w-3.5 border-b border-l border-zinc-200 rounded-bl-lg"
+                                style={{ height: "18px" }}
+                              />
+
+                              <button
+                                onClick={() => {
+                                  onNavigate(child.id);
+                                  onMobileClose?.();
+                                }}
+                                className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-all duration-150 ${
+                                  active
+                                    ? "bg-zinc-100 font-semibold text-zinc-900 shadow-2xs"
+                                    : "text-zinc-500 font-medium hover:bg-zinc-100/60 hover:text-zinc-900"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 truncate">
+                                  <ChildIcon
+                                    size={14}
+                                    weight={active ? "fill" : "regular"}
+                                    className={`shrink-0 ${active ? "text-zinc-900" : "text-zinc-400"}`}
+                                  />
+                                  <span className="truncate">{t(child.key)}</span>
+                                </div>
+                                {active && (
+                                  <CaretRight
+                                    size={12}
+                                    weight="bold"
+                                    className="text-zinc-500 shrink-0 ml-1.5"
+                                  />
+                                )}
+                              </button>
+                            </div>
                           );
                         })}
                       </div>
@@ -234,30 +273,36 @@ export function Sidebar({
           })}
         </nav>
 
-        <div className="border-t border-nav-border px-3 py-4">
-          {!collapsed && (
-            <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-nav-muted transition-colors hover:bg-nav-active-bg/60 hover:text-nav-foreground">
-              <SignOut size={16} />
-              {t("nav.logout")}
-            </button>
-          )}
+        {/* User Profile Footer */}
+        <div className="border-t border-zinc-100 p-3">
           {!collapsed ? (
-            <div className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-nav-active-bg font-mono text-xs font-medium text-nav-active">
-                RO
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-[13px] font-medium text-nav-foreground">
-                  {t("nav.roleName")}
+            <div className="flex items-center justify-between rounded-2xl border border-zinc-200/60 bg-zinc-50/70 p-2.5 transition-colors hover:bg-zinc-100/70">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-900 font-mono text-xs font-bold text-white shadow-2xs">
+                  RO
                 </div>
-                <div className="truncate text-[11px] text-nav-muted">
-                  {t("nav.department")}
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-semibold text-zinc-900">
+                    {t("nav.roleName")}
+                  </div>
+                  <div className="truncate text-[10px] text-zinc-500">
+                    {t("nav.department")}
+                  </div>
                 </div>
               </div>
+              <button
+                title={t("nav.logout")}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-200/60 hover:text-danger transition-colors"
+              >
+                <SignOut size={14} />
+              </button>
             </div>
           ) : (
-            <div className="flex items-center justify-center rounded-lg py-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-nav-active-bg font-mono text-xs font-medium text-nav-active">
+            <div className="flex items-center justify-center py-1">
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-zinc-900 font-mono text-xs font-bold text-white shadow-2xs"
+                title={t("nav.roleName")}
+              >
                 RO
               </div>
             </div>

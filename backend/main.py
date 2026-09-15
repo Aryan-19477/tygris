@@ -105,6 +105,10 @@ _CAPTURES_DIR = os.path.join(PROJECT_ROOT, "backend", "data", "captures")
 os.makedirs(_CAPTURES_DIR, exist_ok=True)
 app.mount("/captures", StaticFiles(directory=_CAPTURES_DIR), name="captures")
 
+_TIGERS_DIR = os.path.join(PROJECT_ROOT, "frontend-v2", "public", "tigers")
+if os.path.exists(_TIGERS_DIR):
+    app.mount("/tigers", StaticFiles(directory=_TIGERS_DIR), name="tigers")
+
 # One-time, idempotent migration: older copies of pench_unified.db (this
 # file is committed to the repo as seed data) predate the Capture Log and
 # don't have this column yet. Adding it here — rather than requiring a

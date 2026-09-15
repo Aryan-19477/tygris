@@ -568,15 +568,27 @@ function CaptureLogPanel({ cameraId }: { cameraId: string | null }) {
           >
             <Card padding="sm" className="overflow-hidden !p-0">
               <div className="aspect-square w-full bg-surface-sunken">
-                {c.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={captureImageSrc(c.image_url) ?? undefined} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted">
-                    <ImageBroken size={18} />
-                    <span className="text-2xs">{t("captures.noImageOnFile")}</span>
-                  </div>
-                )}
+                {(() => {
+                  const imgSrc = captureImageSrc(c.image_url || (c.tiger_id ? `/tigers/${c.tiger_id}.jpg` : null));
+                  return imgSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imgSrc}
+                      alt={c.tiger_id ?? ""}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        if (c.tiger_id && (e.currentTarget as HTMLImageElement).src !== `/tigers/${c.tiger_id}.jpg`) {
+                          (e.currentTarget as HTMLImageElement).src = `/tigers/${c.tiger_id}.jpg`;
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted">
+                      <ImageBroken size={18} />
+                      <span className="text-2xs">{t("captures.noImageOnFile")}</span>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="p-2.5">
                 <div className="truncate text-sm font-medium text-foreground">{c.tiger_name ?? c.tiger_id ?? t("captures.logEmpty")}</div>

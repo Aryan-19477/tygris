@@ -12,24 +12,34 @@ export function TopBar({
   subtitle,
   alertCount,
   right,
+  center,
+  children,
 }: {
   title: string;
   subtitle: string;
   alertCount: number;
   right?: React.ReactNode;
+  center?: React.ReactNode;
+  children?: React.ReactNode;
 }) {
   const { navigate } = useNavigation();
   const { t } = useLanguage();
   const [accountOpen, setAccountOpen] = useState(false);
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-5 py-5 sm:gap-6 sm:px-8 sm:py-6">
-      <div>
+    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-4 sm:gap-6 sm:px-8 sm:py-4.5">
+      <div className="min-w-0">
         <h1 className="font-serif text-2xl font-medium tracking-tight text-foreground sm:text-3xl">
           {title}
         </h1>
-        <p className="mt-1 text-sm text-muted sm:text-[15px]">{subtitle}</p>
+        <p className="mt-0.5 text-xs text-muted sm:text-sm">{subtitle}</p>
       </div>
+
+      {(center || children) && (
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+          {center || children}
+        </div>
+      )}
 
       <div className="flex shrink-0 items-center gap-3 sm:gap-4">
         {right}
