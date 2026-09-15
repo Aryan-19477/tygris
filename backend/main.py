@@ -31,6 +31,7 @@ from backend.app.api.routes_identify import router as identify_router
 from backend.app.api.routes_gallery import router as gallery_router
 from backend.app.api.routes_gis import router as gis_router
 from backend.app.api.routes_alerts import router as alerts_router
+from backend.app.api.routes_captures import router as captures_router
 from backend.app.api.routes_review import router as review_router
 from backend.app.api.routes_embedding import router as embedding_router
 from backend.app.api.routes_screening import router as screening_router
@@ -96,11 +97,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serves real captured-sighting photos saved by _record_sighting() (see
+# routes_identify.py) — the Capture Log reads image_path values like
+# "/captures/EVT_LIVE_xxx.jpg" from the sightings table and fetches them
+# from here.
+_CAPTURES_DIR = os.path.join(PROJECT_ROOT, "backend", "data", "captures")
+os.makedirs(_CAPTURES_DIR, exist_ok=True)
+app.mount("/captures", StaticFiles(directory=_CAPTURES_DIR), name="captures")
+
+_TIGERS_DIR = os.path.join(PROJECT_ROOT, "frontend-v2", "public", "tigers")
+if os.path.exists(_TIGERS_DIR):
+    app.mount("/tigers", StaticFiles(directory=_TIGERS_DIR), name="tigers")
+
+# One-time, idempotent migration: older copies of pench_unified.db (this
+# file is committed to the repo as seed data) predate the Capture Log and
+# don't have this column yet. Adding it here — rather than requiring a
+# specific committed DB binary — means the column always exists on
+# startup regardless of which snapshot of the DB is on disk.
+_db_path = os.path.join(PROJECT_ROOT, "backend", "data", "pench_unified.db")
+if os.path.exists(_db_path):
+    import sqlite3 as _sqlite3
+    _conn = _sqlite3.connect(_db_path)
+    _cols = [r[1] for r in _conn.execute("PRAGMA table_info(sightings)").fetchall()]
+    if "image_path" not in _cols:
+        _conn.execute("ALTER TABLE sightings ADD COLUMN image_path TEXT")
+        _conn.commit()
+    _conn.close()
+
 # Register API Routers
 app.include_router(identify_router)
 app.include_router(gallery_router)
 app.include_router(gis_router)
 app.include_router(alerts_router)
+app.include_router(captures_router)
 app.include_router(review_router)
 app.include_router(embedding_router)
 app.include_router(screening_router)
@@ -121,6 +150,7 @@ def root():
             "/api/gis/bundle",
             "/api/stations",
             "/api/alerts",
+            "/api/captures",
             "/api/stats",
             "/api/review-queue",
             "/api/embedding-space",

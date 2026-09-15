@@ -14,6 +14,7 @@ import {
   PawPrint,
 } from "@phosphor-icons/react";
 import { TopBar } from "@/components/TopBar";
+import { Card, SectionLabel } from "@/components/ui";
 import { api, type Stats, type ScreeningResult, type ScreeningFrame } from "@/lib/api";
 
 const REASON_META: Record<
@@ -96,11 +97,10 @@ export function Pass1ScreeningView({ stats }: { stats: Stats | null }) {
       />
 
       <div className="px-5 py-6 sm:px-8">
-        <div className="mb-6 rounded-xl border border-border bg-surface p-5">
-          <div className="mb-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-muted">
-            <FilmStrip size={13} />
-            <span>Camera-trap clip</span>
-          </div>
+        <Card padding="lg" className="mb-6">
+          <SectionLabel icon={<FilmStrip size={13} />} className="mb-4">
+            Camera-trap clip
+          </SectionLabel>
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="flex-1">
@@ -134,7 +134,7 @@ export function Pass1ScreeningView({ stats }: { stats: Stats | null }) {
             </div>
 
             <div className="shrink-0">
-              <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-muted">
+              <label className="mb-1.5 block font-mono text-2xs uppercase tracking-wide text-muted">
                 Sample rate
               </label>
               <select
@@ -176,7 +176,7 @@ export function Pass1ScreeningView({ stats }: { stats: Stats | null }) {
               First run downloads the YOLOv8n weights (~7 MB) and may take an extra moment.
             </p>
           )}
-        </div>
+        </Card>
 
         {result && (
           <>
@@ -196,7 +196,7 @@ export function Pass1ScreeningView({ stats }: { stats: Stats | null }) {
               <div className="mb-6 overflow-hidden rounded-xl border-2 border-accent bg-surface">
                 <div className="flex items-center gap-2 border-b border-border bg-accent-soft px-5 py-3">
                   <Star size={15} weight="fill" className="text-accent" />
-                  <span className="font-mono text-[11px] font-semibold uppercase tracking-wide text-accent">
+                  <span className="font-mono text-2xs font-semibold uppercase tracking-wide text-accent">
                     Best representative frame
                   </span>
                 </div>
@@ -278,7 +278,7 @@ function StatTile({
   return (
     <div className="rounded-xl border border-border bg-surface px-4 py-3">
       <div className={`font-mono text-2xl font-semibold ${color}`}>{value}</div>
-      <div className="mt-0.5 text-[11px] text-muted">{label}</div>
+      <div className="mt-0.5 text-2xs text-muted">{label}</div>
     </div>
   );
 }
@@ -286,7 +286,7 @@ function StatTile({
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-border pb-2">
-      <dt className="font-mono text-[10px] uppercase tracking-wide text-muted">{label}</dt>
+      <dt className="font-mono text-2xs uppercase tracking-wide text-muted">{label}</dt>
       <dd className="font-mono text-sm font-medium text-foreground">{value}</dd>
     </div>
   );
@@ -316,17 +316,17 @@ function FrameCard({ frame, isBest }: { frame: ScreeningFrame; isBest: boolean }
           className={`aspect-video w-full object-cover ${good ? "" : "opacity-45 grayscale"}`}
         />
         {isBest && (
-          <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 font-mono text-[10px] font-semibold text-white">
+          <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 font-mono text-2xs font-semibold text-white">
             <Star size={10} weight="fill" /> BEST
           </span>
         )}
-        <span className="absolute right-2 top-2 rounded bg-black/65 px-1.5 py-0.5 font-mono text-[10px] text-white">
+        <span className="absolute right-2 top-2 rounded bg-black/65 px-1.5 py-0.5 font-mono text-2xs text-white">
           {frame.timestamp_sec.toFixed(1)}s
         </span>
       </div>
       <div className="px-3 py-2.5">
         <div
-          className={`flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wide ${
+          className={`flex items-center gap-1.5 font-mono text-2xs font-semibold uppercase tracking-wide ${
             good ? "text-accent" : "text-priority-high"
           }`}
         >

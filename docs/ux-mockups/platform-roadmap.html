@@ -37,17 +37,18 @@
   <div class="grid">
     <div class="item"><div class="t">Single-shot identify</div><div class="d">Upload one photo, get a candidate match. No history kept.</div></div>
     <div class="item"><div class="t">Tiger catalogue &amp; dossier</div><div class="d">Browse enrolled tigers, per-tiger capture history.</div></div>
-    <div class="item"><div class="t">Attention / review queue</div><div class="d">Ambiguous matches and conflicts needing a human call.</div></div>
+    <div class="item"><div class="t">Captures &mdash; review queue</div><div class="d">Ambiguous matches and conflicts needing a human call, merged with camera-network health (was two separate pages: Attention Queue, Station Health).</div></div>
+    <div class="item"><div class="t">Captures &mdash; Capture Log</div><div class="d">Real, persisted photo per sighting; paginated, camera-filterable browsable history — the "next" item below, now built.</div></div>
     <div class="item"><div class="t">Pass-1 video screening</div><div class="d">One-off: sample a clip, flag candidate frames.</div></div>
   </div>
 
-  <h2>Planned &mdash; capture log foundation <span class="badge next">next</span></h2>
+  <h2>Planned &mdash; next <span class="badge next">next</span></h2>
   <div class="grid">
-    <div class="item next"><div class="t">Capture Log</div><div class="d">Auto-grouped events per camera trigger, browsable, persisted.</div></div>
     <div class="item next"><div class="t">Pairs &amp; Family Groups</div><div class="d">Courtship, mother-cub litters, territory overlap between known tigers.</div></div>
+    <div class="item next"><div class="t">Review-resolve &rarr; embedding gallery</div><div class="d">Enrolling a new individual from the review queue doesn't yet hot-load into the live re-ID matcher's gallery.</div></div>
   </div>
 
-  <h2>Natural extensions once events are persisted</h2>
+  <h2>Natural extensions now that events are persisted</h2>
   <div class="grid">
     <div class="item"><div class="t">Territory &amp; movement map</div><div class="d">Per-tiger range over time, heatmap of zone activity, corridor usage.</div></div>
     <div class="item"><div class="t">Camera health board</div><div class="d">Offline/battery-low/no-pickup cameras &mdash; ops, not ecology.</div></div>

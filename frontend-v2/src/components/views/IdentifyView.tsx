@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { MapPin, MagnifyingGlass, CheckCircle, Camera, Info } from "@phosphor-icons/react";
 import { TopBar } from "@/components/TopBar";
+import { Card, SectionLabel, Pill } from "@/components/ui";
 import { IdentifyCapture } from "@/components/IdentifyCapture";
 import { api, type Stats, type GISStation } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -40,10 +41,9 @@ export function IdentifyView({ stats }: { stats: Stats | null }) {
 
       <div className="grid grid-cols-1 gap-0 lg:grid-cols-[360px_1fr]">
         <div className="border-r border-border px-6 py-6">
-          <div className="mb-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-muted">
-            <MapPin size={13} />
-            <span>{t("identify.cameraStation")}</span>
-          </div>
+          <SectionLabel icon={<MapPin size={13} />} className="mb-3">
+            {t("identify.cameraStation")}
+          </SectionLabel>
 
           {station ? (
             <div className="mb-4 flex items-center justify-between rounded-xl border border-accent/40 bg-accent-soft p-3.5">
@@ -84,13 +84,9 @@ export function IdentifyView({ stats }: { stats: Stats | null }) {
                         <div className="text-[11px] text-muted">{s.sub_region || s.zone}</div>
                       </div>
                     </div>
-                    <span
-                      className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${
-                        s.operational_status === "OPERATIONAL" ? "bg-positive-soft text-positive" : "bg-danger-soft text-danger"
-                      }`}
-                    >
+                    <Pill tone={s.operational_status === "OPERATIONAL" ? "positive" : "danger"}>
                       {s.operational_status === "OPERATIONAL" ? t("common.online") : t("common.offline")}
-                    </span>
+                    </Pill>
                   </button>
                 ))}
                 {filtered.length === 0 && (
@@ -124,9 +120,9 @@ export function IdentifyView({ stats }: { stats: Stats | null }) {
               </span>
             </div>
           )}
-          <div className="rounded-2xl border border-border bg-surface p-5">
+          <Card padding="lg">
             <IdentifyCapture key={station?.camera_id ?? "none"} stationId={station?.camera_id} />
-          </div>
+          </Card>
         </div>
       </div>
     </div>
