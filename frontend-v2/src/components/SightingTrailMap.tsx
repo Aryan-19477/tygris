@@ -44,38 +44,6 @@ function distKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   return Math.sqrt(dlat * dlat + dlon * dlon);
 }
 
-// SAT overlap test for two convex polygons (MCP territories are convex
-// hulls by definition). Boolean intersection is preserved under any
-// consistent coordinate system, so raw [lat, lon] pairs work fine here.
-function edgeNormals(poly: [number, number][]): [number, number][] {
-  const normals: [number, number][] = [];
-  for (let i = 0; i < poly.length; i++) {
-    const [x1, y1] = poly[i];
-    const [x2, y2] = poly[(i + 1) % poly.length];
-    normals.push([-(y2 - y1), x2 - x1]);
-  }
-  return normals;
-}
-function projectPolygon(poly: [number, number][], axis: [number, number]): [number, number] {
-  let min = Infinity;
-  let max = -Infinity;
-  for (const [x, y] of poly) {
-    const d = x * axis[0] + y * axis[1];
-    if (d < min) min = d;
-    if (d > max) max = d;
-  }
-  return [min, max];
-}
-function convexPolygonsOverlap(a: [number, number][], b: [number, number][]): boolean {
-  if (a.length < 3 || b.length < 3) return false;
-  for (const axis of [...edgeNormals(a), ...edgeNormals(b)]) {
-    const [minA, maxA] = projectPolygon(a, axis);
-    const [minB, maxB] = projectPolygon(b, axis);
-    if (maxA < minB || maxB < minA) return false;
-  }
-  return true;
-}
-
 interface TigerLayer {
   tigerId: string;
   points: TrailPoint[];
@@ -315,33 +283,6 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
     return [lat, lon];
   }
 
-  function territoryRadiusKm(t: Territory): number {
-    if (t.kind === "circle") return t.radiusKm ?? 0;
-    return Math.sqrt(t.areaKm2 / Math.PI);
-  }
-
-  const overlaps = useMemo(() => {
-    const pairs: { a: string; b: string; overlapping: boolean }[] = [];
-    for (let i = 0; i < layers.length; i++) {
-      for (let j = i + 1; j < layers.length; j++) {
-        const layerA = layers[i];
-        const layerB = layers[j];
-        const tA = territoryByTiger.get(layerA.tigerId);
-        const tB = territoryByTiger.get(layerB.tigerId);
-        let overlapping = false;
-        if (tA?.kind === "polygon" && tB?.kind === "polygon" && tA.polygon && tB.polygon) {
-          overlapping = convexPolygonsOverlap(tA.polygon, tB.polygon);
-        } else if (tA && tB) {
-          const ca = territoryCenter(tA);
-          const cb = territoryCenter(tB);
-          overlapping = !!ca && !!cb && distKm(ca[0], ca[1], cb[0], cb[1]) < territoryRadiusKm(tA) + territoryRadiusKm(tB);
-        }
-        pairs.push({ a: layerA.tigerId, b: layerB.tigerId, overlapping });
-      }
-    }
-    return pairs;
-  }, [layers, territoryByTiger]);
-
   // Swap the basemap: satellite tiles for a single tiger, a plain
   // Core/Buffer boundary basemap once comparing — see doc comment above.
   useEffect(() => {
@@ -386,45 +327,17 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
   // tooltips — html2canvas cannot correctly resolve a Leaflet tooltip's
   // nested CSS transform (it renders fine on screen but ends up floating
   // off in the exported PNG), while a plain absolute-positioned div in the
-  // regular DOM exports exactly where it's drawn. Track each territory's
-  // centroid in screen pixels and keep it in sync as the map moves.
+  // regular DOM exports exactly where it's drawn. Positions are computed
+  // in the same effect that fits the map to the territories below, right
+  // after that fit settles, so they can never read a stale/mid-animation
+  // view — computing them from a separately-scheduled effect was racing
+  // against the bounds-fit and landing on the wrong screen position.
   const [labelPositions, setLabelPositions] = useState<{ tigerId: string; x: number; y: number }[]>([]);
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !mapReady || !compareMode) {
-      setLabelPositions([]);
-      return;
-    }
-
-    function update() {
-      const currentMap = mapRef.current;
-      if (!currentMap) return;
-      const positions: { tigerId: string; x: number; y: number }[] = [];
-      for (const layer of layers) {
-        const territory = territoryByTiger.get(layer.tigerId);
-        const center = territory ? territoryCenter(territory) : null;
-        if (!center) continue;
-        const pt = currentMap.latLngToContainerPoint(center);
-        positions.push({ tigerId: layer.tigerId, x: pt.x, y: pt.y });
-      }
-      setLabelPositions(positions);
-    }
-
-    update();
-    map.on("move", update);
-    map.on("zoom", update);
-    map.on("resize", update);
-    return () => {
-      map.off("move", update);
-      map.off("zoom", update);
-      map.off("resize", update);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compareMode, layers, territoryByTiger, mapReady]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
+    let updateLabelPositions: (() => void) | null = null;
 
     import("leaflet").then((leafletModule) => {
       const L = leafletModule.default || leafletModule;
@@ -549,9 +462,46 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
 
       if (allValidPoints.length > 0) {
         const bounds = L.latLngBounds(allValidPoints);
-        currentMap.flyToBounds(bounds.pad(compareMode ? 0.2 : 0.35), { duration: 0.6 });
+        if (compareMode) {
+          // Instant fit (no animation) — flyToBounds's animation left a
+          // window where a re-render mid-flight could freeze the label
+          // positions computed below at a not-yet-settled view.
+          currentMap.fitBounds(bounds.pad(0.2));
+        } else {
+          currentMap.flyToBounds(bounds.pad(0.35), { duration: 0.6 });
+        }
+      }
+
+      if (compareMode) {
+        const update = () => {
+          const positions: { tigerId: string; x: number; y: number }[] = [];
+          for (const layer of layers) {
+            const territory = territoryByTiger.get(layer.tigerId);
+            const center = territory ? territoryCenter(territory) : null;
+            if (!center) continue;
+            const pt = currentMap.latLngToContainerPoint(center);
+            positions.push({ tigerId: layer.tigerId, x: pt.x, y: pt.y });
+          }
+          setLabelPositions(positions);
+        };
+        updateLabelPositions = update;
+        update();
+        currentMap.on("move", update);
+        currentMap.on("zoom", update);
+        currentMap.on("resize", update);
+      } else {
+        setLabelPositions([]);
       }
     });
+
+    return () => {
+      const currentMap = mapRef.current;
+      if (currentMap && updateLabelPositions) {
+        currentMap.off("move", updateLabelPositions);
+        currentMap.off("zoom", updateLabelPositions);
+        currentMap.off("resize", updateLabelPositions);
+      }
+    };
   }, [layers, territoryByTiger, mapReady, compareMode]);
 
   async function openPicker() {
@@ -604,16 +554,111 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
     setExporting(true);
     try {
       const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(captureRef.current, {
-        useCORS: true,
-        backgroundColor: compareMode ? "#f4f2ec" : "#09090b",
-        scale: 2,
-      });
-      const link = document.createElement("a");
-      const ids = layers.map((l) => l.tigerId).join("_");
-      link.download = `tiger-territory-map_${ids}_${Date.now()}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
+      const exportScale = 2;
+
+      if (compareMode && mapRef.current) {
+        // html2canvas cannot reliably reproduce Leaflet's transformed
+        // tile/SVG panes (shapes render fine on screen but land at the
+        // wrong offset in its cloned render) — so for the comparison view
+        // we draw the map content ourselves with the same projection the
+        // live map uses, and only let html2canvas handle the plain-DOM
+        // chrome (legend, north arrow) on top of it.
+        const currentMap = mapRef.current;
+        const rect = captureRef.current.getBoundingClientRect();
+        const w = Math.round(rect.width * exportScale);
+        const h = Math.round(rect.height * exportScale);
+        const mapCanvas = document.createElement("canvas");
+        mapCanvas.width = w;
+        mapCanvas.height = h;
+        const mctx = mapCanvas.getContext("2d")!;
+        mctx.fillStyle = "#f4f2ec";
+        mctx.fillRect(0, 0, w, h);
+
+        const project = (latlng: [number, number]): [number, number] => {
+          const pt = currentMap.latLngToContainerPoint(latlng);
+          return [pt.x * exportScale, pt.y * exportScale];
+        };
+        const drawPoly = (coords: [number, number][], stroke: string, fill: string, fillAlpha: number, lineWidth: number) => {
+          if (coords.length < 3) return;
+          mctx.beginPath();
+          coords.forEach((c, i) => {
+            const [x, y] = project(c);
+            if (i === 0) mctx.moveTo(x, y);
+            else mctx.lineTo(x, y);
+          });
+          mctx.closePath();
+          mctx.globalAlpha = fillAlpha;
+          mctx.fillStyle = fill;
+          mctx.fill();
+          mctx.globalAlpha = 1;
+          mctx.strokeStyle = stroke;
+          mctx.lineWidth = lineWidth;
+          mctx.stroke();
+        };
+
+        if (gisBundle?.buffer_boundary?.length) {
+          drawPoly(gisBundle.buffer_boundary, "#52525b", "#a1a1aa", 0.35, 1.5 * exportScale);
+        }
+        if (gisBundle?.core_boundary?.length) {
+          drawPoly(gisBundle.core_boundary, "#71717a", "#d4d4d8", 0.55, 1.2 * exportScale);
+        }
+        for (const layer of layers) {
+          const territory = territoryByTiger.get(layer.tigerId);
+          if (territory?.kind === "polygon" && territory.polygon) {
+            drawPoly(territory.polygon, layer.color, layer.color, 0.08, 2.5 * exportScale);
+          } else if (territory?.kind === "circle" && territory.center && territory.radiusKm) {
+            const steps = 48;
+            const pts: [number, number][] = [];
+            for (let i = 0; i < steps; i++) {
+              const angle = (i / steps) * Math.PI * 2;
+              pts.push([
+                territory.center[0] + (territory.radiusKm / 111) * Math.cos(angle),
+                territory.center[1] + (territory.radiusKm / 103) * Math.sin(angle),
+              ]);
+            }
+            drawPoly(pts, layer.color, layer.color, 0.08, 2.5 * exportScale);
+          }
+        }
+
+        mctx.font = `bold ${11 * exportScale}px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace`;
+        mctx.textAlign = "center";
+        mctx.textBaseline = "middle";
+        mctx.lineJoin = "round";
+        for (const lp of labelPositions) {
+          const x = lp.x * exportScale;
+          const y = lp.y * exportScale;
+          mctx.lineWidth = 3 * exportScale;
+          mctx.strokeStyle = "#ffffff";
+          mctx.strokeText(lp.tigerId, x, y);
+          mctx.fillStyle = "#1f2420";
+          mctx.fillText(lp.tigerId, x, y);
+        }
+
+        const chromeCanvas = await html2canvas(captureRef.current, {
+          useCORS: true,
+          backgroundColor: null,
+          scale: exportScale,
+          ignoreElements: (el) => el === containerRef.current || el.classList?.contains("tiger-territory-label"),
+        });
+        mctx.drawImage(chromeCanvas, 0, 0);
+
+        const link = document.createElement("a");
+        const ids = layers.map((l) => l.tigerId).join("_");
+        link.download = `tiger-territory-map_${ids}_${Date.now()}.png`;
+        link.href = mapCanvas.toDataURL("image/png");
+        link.click();
+      } else {
+        const canvas = await html2canvas(captureRef.current, {
+          useCORS: true,
+          backgroundColor: "#09090b",
+          scale: exportScale,
+        });
+        const link = document.createElement("a");
+        const ids = layers.map((l) => l.tigerId).join("_");
+        link.download = `tiger-territory-map_${ids}_${Date.now()}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      }
     } catch (err) {
       console.error("Trail map export failed:", err);
       setAddError("Export failed. Try again.");
@@ -723,34 +768,16 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
         </div>
       )}
 
-      {overlaps.length > 0 && (
-        <div className="absolute bottom-2 right-2 z-[1000] max-h-32 w-44 space-y-1 overflow-y-auto rounded-md bg-zinc-950/85 p-1.5 shadow-lg backdrop-blur-md">
-          {overlaps.map((o) => (
-            <div
-              key={`${o.a}-${o.b}`}
-              className={`rounded px-1.5 py-1 text-[10px] font-mono font-bold leading-tight ${
-                o.overlapping ? "bg-amber-950/80 text-amber-300" : "bg-zinc-900/80 text-zinc-500"
-              }`}
-            >
-              <div className="truncate">{o.a} ↔ {o.b}</div>
-              <div>{o.overlapping ? "⚠ territories merge" : "separate"}</div>
-            </div>
-          ))}
-        </div>
-      )}
-
       <div ref={captureRef} className="absolute inset-0">
         <div ref={containerRef} className="h-full w-full z-0" style={{ background: compareMode ? "#f4f2ec" : undefined }} />
 
         {compareMode &&
           labelPositions.map((lp) => (
-            // Anchored with plain left/top (no centering transform) —
-            // html2canvas resolves percentage-based CSS transforms
-            // incorrectly, which was floating this label away from its
-            // polygon in the exported PNG despite rendering fine live.
+            // Live display only — handleExport skips these (see
+            // ignoreElements) and draws the export's labels itself.
             <div
               key={lp.tigerId}
-              className="pointer-events-none absolute z-[950] whitespace-nowrap font-mono text-[11px] font-bold"
+              className="tiger-territory-label pointer-events-none absolute z-[950] whitespace-nowrap font-mono text-[11px] font-bold"
               style={{
                 left: lp.x - lp.tigerId.length * 3.3,
                 top: lp.y - 6,
