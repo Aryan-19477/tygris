@@ -67,15 +67,24 @@ def _record_sighting(
     import datetime
     from backend.app.simulation.anomaly_engine import ConflictAlertClassifier
 
-    st_id = station or "PTR_CAM_014"
+    st_id = station
     db_path = os.path.join(PROJECT_ROOT, "backend", "data", "pench_unified.db")
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
-    cur.execute("SELECT latitude, longitude, zone, nearest_village_km, nearest_water_km FROM camera_stations WHERE camera_id = ?", (st_id,))
-    st_row = cur.fetchone()
-    lat = st_row[0] if st_row else 21.65
-    lon = st_row[1] if st_row else 79.25
+    st_row = None
+    if st_id:
+        cur.execute("SELECT latitude, longitude, zone, nearest_village_km, nearest_water_km FROM camera_stations WHERE camera_id = ?", (st_id,))
+        st_row = cur.fetchone()
+
+    # No real station means no real fix for this sighting. Previously this
+    # fell back to a fake "PTR_CAM_014" camera and the reserve's map-center
+    # coordinates (21.65, 79.25) for every unlocated identification, which
+    # silently gave every tiger identified this way an identical phantom
+    # sighting — collapsing all of their MCP territory polygons onto that
+    # one shared point instead of leaving the sighting unlocated.
+    lat = st_row[0] if st_row else None
+    lon = st_row[1] if st_row else None
     zone = st_row[2] if st_row else "CORE"
     village_km = st_row[3] if st_row and st_row[3] is not None else 99.0
     water_km = st_row[4] if st_row and st_row[4] is not None else 0.0
