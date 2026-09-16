@@ -15,6 +15,7 @@ export interface TrailPoint {
 
 type LeafletMap = import("leaflet").Map;
 type LeafletLayerGroup = import("leaflet").LayerGroup;
+type LeafletTileLayer = import("leaflet").TileLayer;
 
 const ALERT_COLORS: Record<string, string> = {
   SAFE: "#10b981",
@@ -29,6 +30,8 @@ const COMPARE_PALETTE = [
   "#a78bfa", // violet
   "#fb923c", // orange
   "#4ade80", // green
+  "#f87171", // red
+  "#22d3ee", // cyan
 ];
 
 function colorForIndex(i: number) {
@@ -100,17 +103,93 @@ function computeCircleTerritory(tigerId: string, color: string, points: TrailPoi
   return { tigerId, color, center: [avgLat, avgLon], radiusKm };
 }
 
+// Minimum convex polygon (100% MCP) via Andrew's monotone chain — the
+// actual boundary connecting a tiger's outermost real sighting locations,
+// as opposed to a synthetic/estimated shape.
+function convexHull(points: [number, number][]): [number, number][] {
+  const unique = Array.from(new Map(points.map((p) => [`${p[0]},${p[1]}`, p])).values()).sort(
+    (a, b) => a[0] - b[0] || a[1] - b[1]
+  );
+  if (unique.length < 3) return unique;
+  const cross = (o: [number, number], a: [number, number], b: [number, number]) =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower: [number, number][] = [];
+  for (const p of unique) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  const upper: [number, number][] = [];
+  for (let i = unique.length - 1; i >= 0; i--) {
+    const p = unique[i];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  lower.pop();
+  upper.pop();
+  return lower.concat(upper);
+}
+
+// Shoelace formula over a local equirectangular projection (same
+// lat/lon-to-km scale factors used by distKm above).
+function polygonAreaKm2(hull: [number, number][]): number {
+  if (hull.length < 3) return 0;
+  const [originLat, originLon] = hull[0];
+  const proj = hull.map(([lat, lon]): [number, number] => [(lon - originLon) * 103.0, (lat - originLat) * 111.0]);
+  let area = 0;
+  for (let i = 0; i < proj.length; i++) {
+    const [x1, y1] = proj[i];
+    const [x2, y2] = proj[(i + 1) % proj.length];
+    area += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(area) / 2;
+}
+
+interface Territory {
+  kind: "polygon" | "circle";
+  polygon?: [number, number][];
+  center?: [number, number];
+  radiusKm?: number;
+  areaKm2: number;
+}
+
+// A tiger's territory is traced directly from its own real sighting
+// locations (the actual path it traced), not any pre-baked shape — a
+// convex hull when there are enough distinct fixes, otherwise a small
+// estimated circle around them.
+function computeTerritory(tigerId: string, color: string, points: TrailPoint[]): Territory | null {
+  const valid = points.filter(
+    (p): p is TrailPoint & { latitude: number; longitude: number } =>
+      typeof p.latitude === "number" && typeof p.longitude === "number"
+  );
+  if (valid.length === 0) return null;
+  const hull = convexHull(valid.map((p): [number, number] => [p.latitude, p.longitude]));
+  if (hull.length >= 3) {
+    return { kind: "polygon", polygon: hull, areaKm2: polygonAreaKm2(hull) };
+  }
+  const circle = computeCircleTerritory(tigerId, color, points);
+  if (!circle) return null;
+  return { kind: "circle", center: circle.center, radiusKm: circle.radiusKm, areaKm2: Math.PI * circle.radiusKm * circle.radiusKm };
+}
+
+const ARCGIS_SATELLITE_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+
 /**
- * Leaflet map for a tiger's sighting trail. Renders the primary tiger's
- * (windowed) trail plus any additional tigers added via "Add Tiger" for
- * side-by-side territory comparison, and supports exporting the rendered
- * map (trails + territory legend) as a PNG.
+ * Leaflet map for a tiger's sighting trail. In single-tiger mode it renders
+ * the satellite basemap with a numbered, per-camera-station pin trail. As
+ * soon as a second tiger is added for comparison, it switches to a clean
+ * reserve-boundary basemap (Core/Buffer zones) with colored territory
+ * outlines and direct labels — matching the department's static MCP
+ * territory reports — since per-station pins for several tigers at once
+ * stop being legible. Supports exporting the rendered map as a PNG.
  */
 export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; tigerId: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const captureRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const layerRef = useRef<LeafletLayerGroup | null>(null);
+  const tileLayerRef = useRef<LeafletTileLayer | null>(null);
+  const boundaryLayerRef = useRef<LeafletLayerGroup | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
   const [compared, setCompared] = useState<{ tigerId: string; points: TrailPoint[] }[]>([]);
@@ -123,6 +202,10 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
   const pickerRef = useRef<HTMLDivElement>(null);
 
   const [exporting, setExporting] = useState(false);
+
+  // Comparing two or more tigers switches the whole map to the clean
+  // boundary + territory-outline report style (see doc comment above).
+  const compareMode = compared.length > 0;
 
   // Real MCP territory polygons (same source as the Reserve Map) — used to
   // draw accurately-positioned, non-inflated territory shapes for compared
@@ -148,13 +231,16 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
           attributionControl: false,
         });
         L.control.zoom({ position: "topright" }).addTo(map);
-        L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+        L.control.scale({ position: "bottomleft", imperial: false, maxWidth: 100 }).addTo(map);
+
+        tileLayerRef.current = L.tileLayer(ARCGIS_SATELLITE_URL, {
           attribution: "Tiles &copy; Esri",
           maxZoom: 19,
           crossOrigin: true,
         }).addTo(map);
 
         layerRef.current = L.layerGroup().addTo(map);
+        boundaryLayerRef.current = L.layerGroup();
         mapRef.current = map;
         setMapReady(true);
       }
@@ -200,13 +286,39 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
     });
 
   const layers: TigerLayer[] = useMemo(() => {
-    const result: TigerLayer[] = [{ tigerId, points: resolvePoints(points), color: "#ffffff", isPrimary: true }];
+    const result: TigerLayer[] = [
+      { tigerId, points: resolvePoints(points), color: colorForIndex(0), isPrimary: true },
+    ];
     compared.forEach((c, i) => {
-      result.push({ tigerId: c.tigerId, points: resolvePoints(c.points), color: colorForIndex(i), isPrimary: false });
+      result.push({ tigerId: c.tigerId, points: resolvePoints(c.points), color: colorForIndex(i + 1), isPrimary: false });
     });
     return result;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tigerId, points, compared, stationCoords]);
+
+  // Each tiger's territory is traced from its own real sighting locations
+  // — see computeTerritory's doc comment.
+  const territoryByTiger = useMemo(() => {
+    const map = new Map<string, Territory>();
+    for (const layer of layers) {
+      const territory = computeTerritory(layer.tigerId, layer.color, layer.points);
+      if (territory) map.set(layer.tigerId, territory);
+    }
+    return map;
+  }, [layers]);
+
+  function territoryCenter(t: Territory): [number, number] | null {
+    if (t.kind === "circle") return t.center ?? null;
+    if (!t.polygon?.length) return null;
+    const lat = t.polygon.reduce((sum, p) => sum + p[0], 0) / t.polygon.length;
+    const lon = t.polygon.reduce((sum, p) => sum + p[1], 0) / t.polygon.length;
+    return [lat, lon];
+  }
+
+  function territoryRadiusKm(t: Territory): number {
+    if (t.kind === "circle") return t.radiusKm ?? 0;
+    return Math.sqrt(t.areaKm2 / Math.PI);
+  }
 
   const overlaps = useMemo(() => {
     const pairs: { a: string; b: string; overlapping: boolean }[] = [];
@@ -214,21 +326,101 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
       for (let j = i + 1; j < layers.length; j++) {
         const layerA = layers[i];
         const layerB = layers[j];
-        const polyA = gisBundle?.territories?.[layerA.tigerId]?.polygon;
-        const polyB = gisBundle?.territories?.[layerB.tigerId]?.polygon;
-        let overlapping: boolean;
-        if (polyA && polyB) {
-          overlapping = convexPolygonsOverlap(polyA, polyB);
-        } else {
-          const ca = computeCircleTerritory(layerA.tigerId, "", layerA.points);
-          const cb = computeCircleTerritory(layerB.tigerId, "", layerB.points);
-          overlapping = !!ca && !!cb && distKm(ca.center[0], ca.center[1], cb.center[0], cb.center[1]) < ca.radiusKm + cb.radiusKm;
+        const tA = territoryByTiger.get(layerA.tigerId);
+        const tB = territoryByTiger.get(layerB.tigerId);
+        let overlapping = false;
+        if (tA?.kind === "polygon" && tB?.kind === "polygon" && tA.polygon && tB.polygon) {
+          overlapping = convexPolygonsOverlap(tA.polygon, tB.polygon);
+        } else if (tA && tB) {
+          const ca = territoryCenter(tA);
+          const cb = territoryCenter(tB);
+          overlapping = !!ca && !!cb && distKm(ca[0], ca[1], cb[0], cb[1]) < territoryRadiusKm(tA) + territoryRadiusKm(tB);
         }
         pairs.push({ a: layerA.tigerId, b: layerB.tigerId, overlapping });
       }
     }
     return pairs;
-  }, [layers, gisBundle]);
+  }, [layers, territoryByTiger]);
+
+  // Swap the basemap: satellite tiles for a single tiger, a plain
+  // Core/Buffer boundary basemap once comparing — see doc comment above.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    import("leaflet").then((leafletModule) => {
+      const L = leafletModule.default || leafletModule;
+      const currentMap = mapRef.current;
+      const tile = tileLayerRef.current;
+      const boundary = boundaryLayerRef.current;
+      if (!currentMap || !tile || !boundary) return;
+
+      if (compareMode) {
+        if (currentMap.hasLayer(tile)) currentMap.removeLayer(tile);
+        boundary.clearLayers();
+        if (gisBundle?.buffer_boundary?.length) {
+          L.polygon(gisBundle.buffer_boundary, {
+            color: "#52525b",
+            weight: 1.5,
+            fillColor: "#a1a1aa",
+            fillOpacity: 0.35,
+          }).addTo(boundary);
+        }
+        if (gisBundle?.core_boundary?.length) {
+          L.polygon(gisBundle.core_boundary, {
+            color: "#71717a",
+            weight: 1.2,
+            fillColor: "#d4d4d8",
+            fillOpacity: 0.55,
+          }).addTo(boundary);
+        }
+        if (!currentMap.hasLayer(boundary)) boundary.addTo(currentMap);
+      } else {
+        if (currentMap.hasLayer(boundary)) currentMap.removeLayer(boundary);
+        if (!currentMap.hasLayer(tile)) tile.addTo(currentMap);
+      }
+    });
+  }, [compareMode, gisBundle, mapReady]);
+
+  // Territory labels are plain positioned React elements, not Leaflet
+  // tooltips — html2canvas cannot correctly resolve a Leaflet tooltip's
+  // nested CSS transform (it renders fine on screen but ends up floating
+  // off in the exported PNG), while a plain absolute-positioned div in the
+  // regular DOM exports exactly where it's drawn. Track each territory's
+  // centroid in screen pixels and keep it in sync as the map moves.
+  const [labelPositions, setLabelPositions] = useState<{ tigerId: string; x: number; y: number }[]>([]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady || !compareMode) {
+      setLabelPositions([]);
+      return;
+    }
+
+    function update() {
+      const currentMap = mapRef.current;
+      if (!currentMap) return;
+      const positions: { tigerId: string; x: number; y: number }[] = [];
+      for (const layer of layers) {
+        const territory = territoryByTiger.get(layer.tigerId);
+        const center = territory ? territoryCenter(territory) : null;
+        if (!center) continue;
+        const pt = currentMap.latLngToContainerPoint(center);
+        positions.push({ tigerId: layer.tigerId, x: pt.x, y: pt.y });
+      }
+      setLabelPositions(positions);
+    }
+
+    update();
+    map.on("move", update);
+    map.on("zoom", update);
+    map.on("resize", update);
+    return () => {
+      map.off("move", update);
+      map.off("zoom", update);
+      map.off("resize", update);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareMode, layers, territoryByTiger, mapReady]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -240,7 +432,6 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
       if (!currentMap || !layerRef.current) return;
 
       layerRef.current.clearLayers();
-
       const allValidPoints: [number, number][] = [];
 
       for (const layer of layers) {
@@ -248,43 +439,72 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
           (p): p is TrailPoint & { latitude: number; longitude: number } =>
             typeof p.latitude === "number" && typeof p.longitude === "number"
         );
+
+        // Territory shape: the convex hull actually traced by this
+        // tiger's own real sighting locations (see computeTerritory).
+        const territory = territoryByTiger.get(layer.tigerId);
+
+        if (compareMode) {
+          // Comparison view: outline + direct label only, no per-station
+          // pins or trail lines — matches the static MCP report style.
+          if (territory?.kind === "polygon" && territory.polygon) {
+            territory.polygon.forEach((pt) => allValidPoints.push(pt));
+            const poly = L.polygon(territory.polygon, {
+              color: layer.color,
+              weight: 2.5,
+              fillColor: layer.color,
+              fillOpacity: 0.08,
+            });
+            poly.bindPopup(
+              `<strong>${layer.tigerId}</strong><br>100% MCP: ${territory.areaKm2.toFixed(1)} km²`,
+              { className: "gis-map-tooltip" }
+            );
+            layerRef.current!.addLayer(poly);
+          } else if (territory?.kind === "circle" && territory.center && territory.radiusKm) {
+            allValidPoints.push(territory.center);
+            const circle = L.circle(territory.center, {
+              radius: territory.radiusKm * 1000,
+              color: layer.color,
+              weight: 2.5,
+              fillColor: layer.color,
+              fillOpacity: 0.08,
+            });
+            layerRef.current!.addLayer(circle);
+          }
+          continue;
+        }
+
+        // Single-tiger view: satellite basemap + numbered per-station pins.
         if (valid.length === 0) continue;
         valid.forEach((p) => allValidPoints.push([p.latitude, p.longitude]));
 
-        // Territory shape: prefer the real MCP polygon (same accurate,
-        // fixed boundary the Reserve Map draws) over an approximated
-        // circle, which only kicks in when a tiger has no GIS entry.
-        const gisTerritory = gisBundle?.territories?.[layer.tigerId];
-        if (gisTerritory?.polygon?.length) {
-          const poly = L.polygon(gisTerritory.polygon, {
-            color: layer.isPrimary ? "#f59e0b" : layer.color,
-            weight: layer.isPrimary ? 1.8 : 2,
-            dashArray: layer.isPrimary ? "6, 8" : undefined,
-            fillColor: layer.isPrimary ? "#f59e0b" : layer.color,
-            fillOpacity: layer.isPrimary ? 0.05 : 0.1,
+        if (territory?.kind === "polygon" && territory.polygon) {
+          const poly = L.polygon(territory.polygon, {
+            color: "#f59e0b",
+            weight: 1.8,
+            dashArray: "6, 8",
+            fillColor: "#f59e0b",
+            fillOpacity: 0.05,
           });
           poly.bindTooltip(
-            `<strong>Tiger ${layer.tigerId} Territory</strong><br>100% MCP: ${gisTerritory.area_km2} km²`,
+            `<strong>Tiger ${layer.tigerId} Territory</strong><br>100% MCP: ${territory.areaKm2.toFixed(1)} km²`,
             { sticky: true, className: "gis-map-tooltip" }
           );
           layerRef.current!.addLayer(poly);
-        } else {
-          const fallback = computeCircleTerritory(layer.tigerId, layer.color, valid);
-          if (fallback) {
-            const circle = L.circle(fallback.center, {
-              radius: fallback.radiusKm * 1000,
-              color: layer.isPrimary ? "#f59e0b" : layer.color,
-              weight: 1.8,
-              dashArray: "6, 8",
-              fillColor: layer.isPrimary ? "#f59e0b" : layer.color,
-              fillOpacity: 0.05,
-            });
-            circle.bindTooltip(
-              `<strong>Tiger ${layer.tigerId} Territory (est.)</strong><br>~${(Math.PI * fallback.radiusKm * fallback.radiusKm).toFixed(1)} km²`,
-              { sticky: true, className: "gis-map-tooltip" }
-            );
-            layerRef.current!.addLayer(circle);
-          }
+        } else if (territory?.kind === "circle" && territory.center && territory.radiusKm) {
+          const circle = L.circle(territory.center, {
+            radius: territory.radiusKm * 1000,
+            color: "#f59e0b",
+            weight: 1.8,
+            dashArray: "6, 8",
+            fillColor: "#f59e0b",
+            fillOpacity: 0.05,
+          });
+          circle.bindTooltip(
+            `<strong>Tiger ${layer.tigerId} Territory (est.)</strong><br>~${territory.areaKm2.toFixed(1)} km²`,
+            { sticky: true, className: "gis-map-tooltip" }
+          );
+          layerRef.current!.addLayer(circle);
         }
 
         const ordered = [...valid].reverse();
@@ -292,72 +512,47 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
         if (ordered.length > 1) {
           const line = L.polyline(
             ordered.map((p) => [p.latitude, p.longitude]),
-            layer.isPrimary
-              ? { color: "#ffffff", weight: 1.5, dashArray: "4, 8", opacity: 0.75 }
-              : { color: layer.color, weight: 2, opacity: 0.85 }
+            { color: "#ffffff", weight: 1.5, dashArray: "4, 8", opacity: 0.75 }
           );
           layerRef.current!.addLayer(line);
         }
 
-        if (layer.isPrimary) {
-          // Primary tiger keeps the detailed numbered-pin trail.
-          ordered.forEach((p, i) => {
-            const isLatest = i === ordered.length - 1;
-            const markerColor = ALERT_COLORS[p.alert_level || "SAFE"] || ALERT_COLORS.SAFE;
-            const icon = L.divIcon({
-              className: "custom-trail-icon",
-              html: `<div style="
-                width:20px;height:20px;border-radius:50%;
-                display:flex;align-items:center;justify-content:center;
-                font-family:ui-monospace,monospace;font-size:10px;font-weight:700;
-                background:${isLatest ? markerColor : "rgba(9,9,11,0.85)"};
-                color:${isLatest ? "#fff" : "#e4e4e7"};
-                border:2px solid ${isLatest ? "#fff" : markerColor};
-                transform:${isLatest ? "scale(1.2)" : "scale(1)"};
-              ">${i + 1}</div>`,
-              iconSize: [20, 20],
-              iconAnchor: [10, 10],
-            });
-            const marker = L.marker([p.latitude, p.longitude], { icon });
-            marker.bindPopup(
-              `<div style="font-family: ui-monospace, monospace; font-size: 11px;">
-                <b>${layer.tigerId} &middot; ${p.camera_id || p.station || "Unknown station"}</b><br>
-                ${p.timestamp ? new Date(p.timestamp).toLocaleString() : "Unknown time"}<br>
-                <span style="color:${markerColor}">${p.alert_level || "SAFE"}</span>
-              </div>`,
-              { className: "gis-map-tooltip" }
-            );
-            layerRef.current!.addLayer(marker);
+        ordered.forEach((p, i) => {
+          const isLatest = i === ordered.length - 1;
+          const markerColor = ALERT_COLORS[p.alert_level || "SAFE"] || ALERT_COLORS.SAFE;
+          const icon = L.divIcon({
+            className: "custom-trail-icon",
+            html: `<div style="
+              width:20px;height:20px;border-radius:50%;
+              display:flex;align-items:center;justify-content:center;
+              font-family:ui-monospace,monospace;font-size:10px;font-weight:700;
+              background:${isLatest ? markerColor : "rgba(9,9,11,0.85)"};
+              color:${isLatest ? "#fff" : "#e4e4e7"};
+              border:2px solid ${isLatest ? "#fff" : markerColor};
+              transform:${isLatest ? "scale(1.2)" : "scale(1)"};
+            ">${i + 1}</div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
           });
-        } else {
-          // Compared tigers: small dots (not giant numbered pins) so
-          // overlapping trails around shared stations stay legible.
-          ordered.forEach((p, i) => {
-            const marker = L.circleMarker([p.latitude, p.longitude], {
-              radius: i === ordered.length - 1 ? 6 : 4,
-              color: "#ffffff",
-              weight: 1.2,
-              fillColor: layer.color,
-              fillOpacity: 0.9,
-            });
-            marker.bindPopup(
-              `<div style="font-family: ui-monospace, monospace; font-size: 11px;">
-                <b>${layer.tigerId} &middot; ${p.camera_id || p.station || "Unknown station"}</b><br>
-                ${p.timestamp ? new Date(p.timestamp).toLocaleString() : "Unknown time"}
-              </div>`,
-              { className: "gis-map-tooltip" }
-            );
-            layerRef.current!.addLayer(marker);
-          });
-        }
+          const marker = L.marker([p.latitude, p.longitude], { icon });
+          marker.bindPopup(
+            `<div style="font-family: ui-monospace, monospace; font-size: 11px;">
+              <b>${layer.tigerId} &middot; ${p.camera_id || p.station || "Unknown station"}</b><br>
+              ${p.timestamp ? new Date(p.timestamp).toLocaleString() : "Unknown time"}<br>
+              <span style="color:${markerColor}">${p.alert_level || "SAFE"}</span>
+            </div>`,
+            { className: "gis-map-tooltip" }
+          );
+          layerRef.current!.addLayer(marker);
+        });
       }
 
       if (allValidPoints.length > 0) {
         const bounds = L.latLngBounds(allValidPoints);
-        currentMap.flyToBounds(bounds.pad(0.35), { duration: 0.6 });
+        currentMap.flyToBounds(bounds.pad(compareMode ? 0.2 : 0.35), { duration: 0.6 });
       }
     });
-  }, [layers, gisBundle, mapReady]);
+  }, [layers, territoryByTiger, mapReady, compareMode]);
 
   async function openPicker() {
     setAddError(null);
@@ -411,7 +606,7 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
       const html2canvas = (await import("html2canvas")).default;
       const canvas = await html2canvas(captureRef.current, {
         useCORS: true,
-        backgroundColor: "#09090b",
+        backgroundColor: compareMode ? "#f4f2ec" : "#09090b",
         scale: 2,
       });
       const link = document.createElement("a");
@@ -438,23 +633,26 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
   return (
     <div className="relative h-90 w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-xl">
       <div className="absolute inset-x-0 top-0 z-[1000] flex flex-wrap items-center gap-1.5 border-b border-zinc-800 bg-zinc-950/90 px-2.5 py-2 backdrop-blur-md">
-        <span className="flex items-center gap-1.5 rounded-full bg-zinc-900 px-2.5 py-1 text-2xs font-mono font-bold text-white ring-1 ring-white/30">
-          <span className="h-2 w-2 rounded-full bg-white" />
+        <span
+          className="flex items-center gap-1.5 rounded-full bg-zinc-900 px-2.5 py-1 text-2xs font-mono font-bold text-white"
+          style={{ boxShadow: `inset 0 0 0 1px ${compareMode ? `${layers[0].color}66` : "rgba(255,255,255,0.3)"}` }}
+        >
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: compareMode ? layers[0].color : "#ffffff" }} />
           {tigerId}
         </span>
 
-        {compared.map((c, i) => (
+        {layers.slice(1).map((l) => (
           <span
-            key={c.tigerId}
+            key={l.tigerId}
             className="flex items-center gap-1.5 rounded-full bg-zinc-900 px-2.5 py-1 text-2xs font-mono font-bold text-white"
-            style={{ boxShadow: `inset 0 0 0 1px ${colorForIndex(i)}66` }}
+            style={{ boxShadow: `inset 0 0 0 1px ${l.color}66` }}
           >
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colorForIndex(i) }} />
-            {c.tigerId}
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: l.color }} />
+            {l.tigerId}
             <button
-              onClick={() => removeTiger(c.tigerId)}
+              onClick={() => removeTiger(l.tigerId)}
               className="ml-0.5 rounded-full p-0.5 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-              aria-label={`Remove ${c.tigerId}`}
+              aria-label={`Remove ${l.tigerId}`}
             >
               <X size={10} weight="bold" />
             </button>
@@ -542,19 +740,48 @@ export function SightingTrailMap({ points, tigerId }: { points: TrailPoint[]; ti
       )}
 
       <div ref={captureRef} className="absolute inset-0">
-        <div ref={containerRef} className="h-full w-full z-0" />
+        <div ref={containerRef} className="h-full w-full z-0" style={{ background: compareMode ? "#f4f2ec" : undefined }} />
+
+        {compareMode &&
+          labelPositions.map((lp) => (
+            // Anchored with plain left/top (no centering transform) —
+            // html2canvas resolves percentage-based CSS transforms
+            // incorrectly, which was floating this label away from its
+            // polygon in the exported PNG despite rendering fine live.
+            <div
+              key={lp.tigerId}
+              className="pointer-events-none absolute z-[950] whitespace-nowrap font-mono text-[11px] font-bold"
+              style={{
+                left: lp.x - lp.tigerId.length * 3.3,
+                top: lp.y - 6,
+                color: "#1f2420",
+                textShadow: "0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff",
+              }}
+            >
+              {lp.tigerId}
+            </div>
+          ))}
+
+        {compareMode && (
+          <div className="pointer-events-none absolute top-11 left-2 z-[900] flex flex-col items-center" style={{ color: "#3f3f46" }}>
+            <svg width="14" height="18" viewBox="0 0 16 20" fill="none">
+              <path d="M8 0 L14 14 L8 10 L2 14 Z" fill="currentColor" />
+            </svg>
+            <span className="text-[9px] font-mono font-bold">N</span>
+          </div>
+        )}
 
         {layers.length > 1 && (
           <div
-            className="pointer-events-none absolute bottom-2 left-2 z-[999] rounded-md px-2.5 py-1.5 text-2xs font-mono shadow-lg backdrop-blur-md"
+            className="pointer-events-none absolute bottom-10 left-2 z-[999] rounded-md px-2.5 py-1.5 text-2xs font-mono shadow-lg backdrop-blur-md"
             style={{ backgroundColor: "rgba(9,9,11,0.85)", color: "#ffffff" }}
           >
             <div className="mb-1 font-bold" style={{ color: "#d4d4d8" }}>Territory comparison</div>
-            {layers.map((l, i) => (
+            {layers.map((l) => (
               <div key={l.tigerId} className="flex items-center gap-1.5">
                 <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: l.isPrimary ? "#ffffff" : colorForIndex(i - 1) }}
+                  className="h-2.5 w-2.5 rounded-[2px]"
+                  style={{ border: `2px solid ${l.color}`, backgroundColor: `${l.color}22` }}
                 />
                 <span>{l.tigerId}</span>
               </div>
