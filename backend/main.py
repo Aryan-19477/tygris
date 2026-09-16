@@ -85,11 +85,13 @@ async def _ranger_ops_poll_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_prey_tables()
-    # Load (and, on a fresh deploy, download via CHECKPOINT_URL) the ReID
-    # model here rather than lazily on first request - otherwise whichever
-    # user's request happens to be first pays for the ~190MB download.
-    from backend.app.ml.reid_embedding import TigerReIDEngine
-    TigerReIDEngine.get()
+    # NOTE: the ReID model (torch + ConvNeXt-small + the checkpoint) is
+    # loaded lazily on first use (see TigerReIDEngine.get() in
+    # routes_identify.py), not here - on memory-constrained deploys (e.g.
+    # Render's 512MB free tier) loading it eagerly at startup can OOM the
+    # whole process before it ever binds its port. Lazy loading confines
+    # that risk to the first /api/identify or /api/model-status call
+    # instead of the entire deploy.
     task = None
     if _RANGER_OPS_AVAILABLE:
         task = asyncio.create_task(_ranger_ops_poll_loop())
