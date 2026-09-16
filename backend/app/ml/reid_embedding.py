@@ -95,43 +95,9 @@ class TigerReIDEngine:
     # ------------------------------------------------------------------
     # Real trained model path
     # ------------------------------------------------------------------
-    def _ensure_checkpoint_downloaded(self) -> Optional[str]:
-        """convnext_metric_best.pth is too large for GitHub (>100MB) and is
-        gitignored, so deploy targets like Render never get it from a git
-        push. If it's missing but CHECKPOINT_URL is set (a GitHub Release
-        asset URL), fetch it once into place before trying to load it.
-        Returns an error string on failure/skip, or None on success."""
-        if os.path.exists(REAL_CHECKPOINT):
-            return None
-        url = os.environ.get("CHECKPOINT_URL")
-        if not url:
-            return "CHECKPOINT_URL env var not set - nothing to download from"
-        import urllib.request
-        print(f"[TigerReIDEngine] {REAL_CHECKPOINT} missing - downloading from CHECKPOINT_URL...")
-        os.makedirs(os.path.dirname(REAL_CHECKPOINT), exist_ok=True)
-        tmp_path = REAL_CHECKPOINT + ".part"
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "tygris-backend"})
-            with urllib.request.urlopen(req, timeout=300) as resp, open(tmp_path, "wb") as f:
-                while True:
-                    chunk = resp.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    f.write(chunk)
-            os.replace(tmp_path, REAL_CHECKPOINT)
-            print(f"[TigerReIDEngine] Downloaded checkpoint to {REAL_CHECKPOINT}")
-            return None
-        except Exception as e:
-            err = f"Checkpoint download from CHECKPOINT_URL failed: {e}"
-            print(f"[TigerReIDEngine] {err}")
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
-            return err
-
     def _try_load_real_model(self) -> bool:
-        download_error = self._ensure_checkpoint_downloaded()
         if not (os.path.exists(REAL_CHECKPOINT) and os.path.exists(REAL_GALLERY_PATH)):
-            self.load_error = download_error or f"Real checkpoint/gallery not found ({REAL_CHECKPOINT}, {REAL_GALLERY_PATH})"
+            self.load_error = f"Real checkpoint/gallery not found ({REAL_CHECKPOINT}, {REAL_GALLERY_PATH})"
             print(f"[TigerReIDEngine] {self.load_error} - using hash-based stub.")
             return False
         try:
