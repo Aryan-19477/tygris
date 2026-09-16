@@ -489,6 +489,220 @@ class GISMapBundle {
   }
 }
 
+class CaptureLogItem {
+  CaptureLogItem({
+    required this.eventId,
+    this.tigerId,
+    this.tigerName,
+    required this.cameraId,
+    this.zone,
+    required this.timestamp,
+    this.flankSide,
+    this.alertLevel,
+    this.imageUrl,
+  });
+
+  final String eventId;
+  final String? tigerId;
+  final String? tigerName;
+  final String cameraId;
+  final String? zone;
+  final String timestamp;
+  final String? flankSide;
+  final String? alertLevel;
+  final String? imageUrl;
+
+  factory CaptureLogItem.fromJson(Map<String, dynamic> j) => CaptureLogItem(
+        eventId: j['event_id'] as String,
+        tigerId: j['tiger_id'] as String?,
+        tigerName: j['tiger_name'] as String?,
+        cameraId: j['camera_id'] as String? ?? '',
+        zone: j['zone'] as String?,
+        timestamp: j['timestamp'] as String? ?? '',
+        flankSide: j['flank_side'] as String?,
+        alertLevel: j['alert_level'] as String?,
+        imageUrl: j['image_url'] as String?,
+      );
+}
+
+class TigerAssociationPair {
+  TigerAssociationPair({
+    required this.tigerA,
+    required this.tigerB,
+    required this.sexA,
+    required this.sexB,
+    required this.coOccurrences,
+    required this.sharedStations,
+  });
+
+  final String tigerA;
+  final String tigerB;
+  final String sexA;
+  final String sexB;
+  final int coOccurrences;
+  final List<String> sharedStations;
+
+  factory TigerAssociationPair.fromJson(Map<String, dynamic> j) =>
+      TigerAssociationPair(
+        tigerA: j['tiger_a'] as String,
+        tigerB: j['tiger_b'] as String,
+        sexA: j['sex_a'] as String? ?? 'U',
+        sexB: j['sex_b'] as String? ?? 'U',
+        coOccurrences: j['co_occurrences'] as int? ?? 0,
+        sharedStations: (j['shared_stations'] as List<dynamic>? ?? [])
+            .map((e) => e.toString())
+            .toList(),
+      );
+}
+
+class RangerObservation {
+  RangerObservation({
+    required this.observationId,
+    this.patrolId,
+    required this.rangerId,
+    required this.obsType,
+    this.speciesCategory,
+    this.severity,
+    this.lat,
+    this.lon,
+    this.timestamp,
+    this.remarks,
+    this.createdAt,
+  });
+
+  final String observationId;
+  final String? patrolId;
+  final String rangerId;
+  final String obsType;
+  final String? speciesCategory;
+  final String? severity;
+  final double? lat;
+  final double? lon;
+  final String? timestamp;
+  final String? remarks;
+  final String? createdAt;
+
+  static const _wildlifeTypes = {
+    'wildlifeSighting',
+    'wildlifeSign',
+    'wildlife_sighting',
+    'wildlife_sign',
+  };
+
+  bool get isWildlife => _wildlifeTypes.contains(obsType);
+  bool get hasCoords => lat != null && lon != null;
+
+  factory RangerObservation.fromJson(Map<String, dynamic> j) =>
+      RangerObservation(
+        observationId: j['observation_id'] as String,
+        patrolId: j['patrol_id'] as String?,
+        rangerId: j['ranger_id'] as String? ?? '',
+        obsType: j['obs_type'] as String? ?? '',
+        speciesCategory: j['species_category'] as String?,
+        severity: j['severity'] as String?,
+        lat: (j['lat'] as num?)?.toDouble(),
+        lon: (j['lon'] as num?)?.toDouble(),
+        timestamp: j['timestamp'] as String?,
+        remarks: j['remarks'] as String?,
+        createdAt: j['created_at'] as String?,
+      );
+}
+
+class RangerPatrol {
+  RangerPatrol({
+    required this.patrolId,
+    required this.rangerId,
+    this.beatArea,
+    this.patrolType,
+    this.status,
+    this.startTime,
+    this.startLat,
+    this.startLon,
+    this.endLat,
+    this.endLon,
+    this.distanceKm,
+    this.durationSeconds,
+    this.notes,
+    this.createdAt,
+  });
+
+  final String patrolId;
+  final String rangerId;
+  final String? beatArea;
+  final String? patrolType;
+  final String? status;
+  final String? startTime;
+  final double? startLat;
+  final double? startLon;
+  final double? endLat;
+  final double? endLon;
+  final double? distanceKm;
+  final int? durationSeconds;
+  final String? notes;
+  final String? createdAt;
+
+  factory RangerPatrol.fromJson(Map<String, dynamic> j) => RangerPatrol(
+        patrolId: j['patrol_id'] as String,
+        rangerId: j['ranger_id'] as String? ?? '',
+        beatArea: j['beat_area'] as String?,
+        patrolType: j['patrol_type'] as String?,
+        status: j['status'] as String?,
+        startTime: j['start_time'] as String?,
+        startLat: (j['start_lat'] as num?)?.toDouble(),
+        startLon: (j['start_lon'] as num?)?.toDouble(),
+        endLat: (j['end_lat'] as num?)?.toDouble(),
+        endLon: (j['end_lon'] as num?)?.toDouble(),
+        distanceKm: (j['distance_km'] as num?)?.toDouble(),
+        durationSeconds: (j['duration_seconds'] as num?)?.round(),
+        notes: j['notes'] as String?,
+        createdAt: j['created_at'] as String?,
+      );
+}
+
+class RangerReports {
+  RangerReports({
+    required this.patrols,
+    required this.observations,
+    required this.configured,
+  });
+
+  final List<RangerPatrol> patrols;
+  final List<RangerObservation> observations;
+  final bool configured;
+
+  factory RangerReports.fromJson(Map<String, dynamic> j) => RangerReports(
+        patrols: (j['patrols'] as List<dynamic>? ?? [])
+            .map((e) => RangerPatrol.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        observations: (j['observations'] as List<dynamic>? ?? [])
+            .map((e) => RangerObservation.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        configured: j['configured'] as bool? ?? false,
+      );
+}
+
+/// confirmed_present | possible_move | no_recent_data | no_location
+class TerritoryCheck {
+  TerritoryCheck({
+    required this.observationId,
+    this.residentTigerId,
+    required this.status,
+    required this.summary,
+  });
+
+  final String observationId;
+  final String? residentTigerId;
+  final String status;
+  final String summary;
+
+  factory TerritoryCheck.fromJson(Map<String, dynamic> j) => TerritoryCheck(
+        observationId: j['observation_id'] as String? ?? '',
+        residentTigerId: j['resident_tiger_id'] as String?,
+        status: j['status'] as String? ?? 'no_recent_data',
+        summary: j['summary'] as String? ?? '',
+      );
+}
+
 class ModelStatus {
   ModelStatus({
     required this.isFullyTrained,

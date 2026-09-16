@@ -89,6 +89,7 @@ export interface GalleryDetail {
     keypoints?: unknown;
     flank?: string;
     confidence?: number;
+    skeleton_connections?: [number, number][];
   };
   trajectory?: [number, number][];
   embedding?: {
@@ -310,6 +311,7 @@ export interface RangerPatrol {
 }
 
 export type TerritoryCheckStatus =
+  | "cameras_prioritized"
   | "confirmed_present"
   | "possible_move"
   | "no_recent_data"
@@ -341,7 +343,9 @@ export interface RangerReports {
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, options);
   if (!res.ok) {
-    throw new Error(`Request failed: ${res.status} ${res.statusText}`);
+    const body = await res.json().catch(() => null);
+    const detail = typeof body?.detail === "string" ? body.detail : res.statusText;
+    throw new Error(`Request failed: ${res.status} ${detail}`);
   }
   return res.json();
 }
@@ -423,9 +427,12 @@ export const api = {
     ),
 
   modelStatus: () =>
-    request<{ is_fully_trained: boolean; weights_loaded: Record<string, boolean>; checkpoints_dir: string }>(
-      "/api/model-status"
-    ),
+    request<{
+      is_fully_trained: boolean;
+      weights_loaded: Record<string, boolean>;
+      checkpoints_dir: string;
+      load_error?: string | null;
+    }>("/api/model-status"),
 
   rangerReports: () => request<RangerReports>("/api/ranger/reports"),
 

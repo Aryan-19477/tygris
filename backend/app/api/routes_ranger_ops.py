@@ -1,7 +1,8 @@
 """
 FastAPI Router: Ranger Field Ops — reading ranger patrol/observation data
-back out of Supabase and computing the "is the resident tiger still here?"
-territory-check intelligence against the existing camera-trap network.
+back out of Supabase and, for wildlife-sighting reports, finding the
+camera-trap stations nearest to the report so they can be prioritized for
+a manual check.
 
 The Ranger Flutter app writes into Supabase directly; this backend only
 reads from it (polling — see main.py's background task) and writes
@@ -38,12 +39,33 @@ def _require_client():
     return client
 
 
+@router.post("/territory-check/run-pending")
+def post_run_pending():
+    """
+    Manual "catch up" endpoint: runs territory checks for every wildlife
+    observation that doesn't have one yet. Also called by the background
+    polling loop in main.py every 60 seconds.
+
+    Registered BEFORE /territory-check/{observation_id} below — FastAPI
+    matches routes in registration order, and a path parameter route would
+    otherwise greedily swallow this literal path (treating "run-pending" as
+    an observation_id), making this endpoint permanently unreachable.
+    """
+    result = run_pending_territory_checks()
+    if not result.get("configured"):
+        raise HTTPException(
+            status_code=503,
+            detail="Supabase not configured — set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY",
+        )
+    return result
+
+
 @router.post("/territory-check/{observation_id}")
 def post_territory_check(observation_id: str):
     """
-    Fetches one observation from Supabase, runs the territory-check
-    algorithm against the local camera-trap/sightings database, inserts
-    the result into `territory_checks`, and returns the inserted row.
+    Fetches one observation from Supabase, finds the nearest camera-trap
+    stations to it, inserts the result into `territory_checks`, and
+    returns the inserted row.
     """
     client = _require_client()
 
@@ -144,17 +166,3 @@ def run_pending_territory_checks() -> Dict[str, Any]:
     return {"processed": processed, "configured": True, "pending_found": len(pending)}
 
 
-@router.post("/territory-check/run-pending")
-def post_run_pending():
-    """
-    Manual "catch up" endpoint: runs territory checks for every wildlife
-    observation that doesn't have one yet. Also called by the background
-    polling loop in main.py every 60 seconds.
-    """
-    result = run_pending_territory_checks()
-    if not result.get("configured"):
-        raise HTTPException(
-            status_code=503,
-            detail="Supabase not configured — set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY",
-        )
-    return result

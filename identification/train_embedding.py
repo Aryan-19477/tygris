@@ -38,9 +38,19 @@ K_IMAGES_PER_IDENTITY = 4
 EPOCHS = 40
 STEPS_PER_EPOCH = 80
 LEARNING_RATE = 1e-4
+WEIGHT_DECAY = 1e-4
 MARGIN = 0.3
 UNFROZEN_STAGES = ("conv4_", "conv5_")
 OUTPUT_PATH = Path(__file__).parent / "models" / "tiger_embedding_finetuned.weights.h5"
+BEST_CHECKPOINT_PATH = Path(__file__).parent / "models" / "tiger_embedding_best.weights.h5"
+
+# How often (in epochs) to run the open-world check during training. This is
+# the metric that actually matters (see open_world_accuracy's docstring) —
+# checkpointing/early-stopping on it, rather than only reporting it before
+# and after training, is what prevents saving an overfit final-epoch model.
+EVAL_EVERY_N_EPOCHS = 5
+EARLY_STOP_PATIENCE = 4  # in units of EVAL_EVERY_N_EPOCHS checks, not epochs
+OPEN_WORLD_DIS_THRES = 0.4  # the single threshold used to drive checkpointing/early-stopping
 
 
 def unfreeze_top_of_backbone(model, unfrozen_stages=UNFROZEN_STAGES):
@@ -68,10 +78,14 @@ def open_world_accuracy(model, dis_thres_values=(0.3, 0.4, 0.5)):
     For each dis_thres, an unseen-identity image is scored a "correct
     rejection" if its best similarity to any known-gallery centroid falls
     below (1 - dis_thres), mirroring the paper's Table 7 methodology.
+
+    Returns the correct-rejection rate at OPEN_WORLD_DIS_THRES (or None if
+    there are no held-out-identity images to evaluate), which is the single
+    number the training loop checkpoints/early-stops on.
     """
     _, known_val_items, unseen_items = open_world_split()
     if not unseen_items:
-        return
+        return None
 
     known_emb, known_labels = compute_embeddings(model, known_val_items)
     unseen_emb, _ = compute_embeddings(model, unseen_items)
@@ -85,10 +99,14 @@ def open_world_accuracy(model, dis_thres_values=(0.3, 0.4, 0.5)):
     best_sim_to_known = (unseen_emb @ centroids.T).max(axis=1)
     print(f"unseen-identity images: {len(unseen_items)} "
           f"(from identities never in the training pool)")
+    driving_metric = None
     for dis_thres in dis_thres_values:
         correctly_flagged_new = (best_sim_to_known < (1.0 - dis_thres)).mean()
         print(f"  dis_thres={dis_thres:.1f}  correctly recognized as new: "
               f"{correctly_flagged_new:.4f}")
+        if abs(dis_thres - OPEN_WORLD_DIS_THRES) < 1e-9:
+            driving_metric = float(correctly_flagged_new)
+    return driving_metric
 
 
 def build_identity_index(items):
@@ -122,7 +140,16 @@ def main():
     by_label = build_identity_index(train_items)
     print(f"Training pool: {len(train_items)} images across {len(by_label)} identities")
 
-    optimizer = tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE)
+    # AdamW's decoupled weight decay acts as regularization across every
+    # trainable weight (dense head + unfrozen conv4/conv5), which plain Adam
+    # has no equivalent of — cheaper to add here than retrofitting
+    # kernel_regularizer onto ResNet50's already-built conv layers (Keras
+    # only applies a layer's regularizer at weight-creation time, so setting
+    # one post-hoc on the pretrained backbone's layers would silently do
+    # nothing).
+    lr_schedule = tf.keras.optimizers.schedules.CosineDecay(
+        initial_learning_rate=LEARNING_RATE, decay_steps=EPOCHS * STEPS_PER_EPOCH)
+    optimizer = tf.keras.optimizers.AdamW(learning_rate=lr_schedule, weight_decay=WEIGHT_DECAY)
     rng = random.Random(123)
 
     print("\nBaseline (before fine-tune):")
@@ -130,8 +157,14 @@ def main():
     print("\nBaseline open-world check (identities never in training pool):")
     open_world_accuracy(model)
 
-    print(f"\nTraining for {EPOCHS} epochs x {STEPS_PER_EPOCH} steps "
-          f"(batch = {P_IDENTITIES_PER_BATCH}x{K_IMAGES_PER_IDENTITY})...\n")
+    print(f"\nTraining for up to {EPOCHS} epochs x {STEPS_PER_EPOCH} steps "
+          f"(batch = {P_IDENTITIES_PER_BATCH}x{K_IMAGES_PER_IDENTITY}), "
+          f"checkpointing on open-world accuracy every {EVAL_EVERY_N_EPOCHS} epochs "
+          f"with early stopping after {EARLY_STOP_PATIENCE} non-improving checks...\n")
+
+    BEST_CHECKPOINT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    best_metric = -1.0
+    checks_since_improvement = 0
 
     for epoch in range(1, EPOCHS + 1):
         epoch_start = time.time()
@@ -149,13 +182,39 @@ def main():
         print(f"epoch {epoch:2d}/{EPOCHS}  loss={np.mean(losses):.4f}  "
               f"({elapsed:.1f}s, {elapsed/STEPS_PER_EPOCH:.2f}s/step)")
 
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    model.save_weights(str(OUTPUT_PATH))
-    print(f"\nSaved fine-tuned weights to {OUTPUT_PATH}")
+        if epoch % EVAL_EVERY_N_EPOCHS == 0 or epoch == EPOCHS:
+            print(f"  [epoch {epoch}] open-world check:")
+            metric = open_world_accuracy(model)
+            if metric is not None:
+                if metric > best_metric:
+                    best_metric = metric
+                    checks_since_improvement = 0
+                    model.save_weights(str(BEST_CHECKPOINT_PATH))
+                    print(f"  [epoch {epoch}] new best open-world accuracy "
+                          f"({metric:.4f}) — checkpoint saved.")
+                else:
+                    checks_since_improvement += 1
+                    print(f"  [epoch {epoch}] no improvement "
+                          f"({checks_since_improvement}/{EARLY_STOP_PATIENCE})")
+                    if checks_since_improvement >= EARLY_STOP_PATIENCE:
+                        print(f"  Early stopping at epoch {epoch} "
+                              f"(best open-world accuracy: {best_metric:.4f}).")
+                        break
 
-    print("\nAfter fine-tune:")
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if best_metric >= 0.0:
+        # Restore the best-open-world-accuracy checkpoint rather than
+        # whatever the final epoch happened to land on — the final epoch is
+        # not necessarily the least-overfit one (see module docstring).
+        model.load_weights(str(BEST_CHECKPOINT_PATH))
+        print(f"\nRestored best checkpoint (open-world accuracy {best_metric:.4f}).")
+    model.save_weights(str(OUTPUT_PATH))
+    print(f"Saved fine-tuned weights to {OUTPUT_PATH}")
+
+    print("\nFinal (best-checkpoint) evaluation:")
     evaluate_main(model)
-    print("\nAfter fine-tune open-world check (identities never in training pool):")
+    print("\nFinal open-world check (identities never in training pool) — "
+          "this is the number that matters, NOT the closed-set rank-k above:")
     open_world_accuracy(model)
 
 

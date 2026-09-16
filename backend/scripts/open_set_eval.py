@@ -95,7 +95,7 @@ def main():
     print(f"Known test queries (val, held-out from gallery but same identity known): {len(val_items)}", flush=True)
     print(f"Unknown test queries (entirely unseen identities): {len(unknown_items)}", flush=True)
 
-    model = get_metric_model(name="ConvNeXt-small", embedding_dim=128, pretrained=False)
+    model = get_metric_model(name="ConvNeXt-small", embedding_dim=64, pretrained=False)
     model.load_state_dict(torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True))
     model.to(DEVICE).eval()
     transform = get_paper_reid_transforms((IMG_SIZE, IMG_SIZE), is_training=False)

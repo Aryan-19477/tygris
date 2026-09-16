@@ -84,7 +84,7 @@ def main():
     for t in holdout_ids:
         unknown_items += [(f, t) for f in images_by_tiger[t]]
 
-    model = get_metric_model(name="ConvNeXt-small", embedding_dim=128, pretrained=False)
+    model = get_metric_model(name="ConvNeXt-small", embedding_dim=64, pretrained=False)
     model.load_state_dict(torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True))
     model.to(DEVICE).eval()
     transform = get_paper_reid_transforms((IMG_SIZE, IMG_SIZE), is_training=False)

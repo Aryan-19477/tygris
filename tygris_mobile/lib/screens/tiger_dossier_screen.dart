@@ -157,7 +157,7 @@ class _HeroProfileCard extends StatelessWidget {
                       children: [
                         if (thumbnail != null && thumbnail.isNotEmpty)
                           CachedNetworkImage(
-                            imageUrl: thumbnail,
+                            imageUrl: resolveMediaUrl(thumbnail),
                             fit: BoxFit.cover,
                             placeholder: (context, _) =>
                                 Container(color: AppColors.surfaceSunken),
@@ -579,7 +579,7 @@ class _CaptureTile extends StatelessWidget {
               height: 64,
               child: capture.image != null && capture.image!.isNotEmpty
                   ? CachedNetworkImage(
-                      imageUrl: capture.image!,
+                      imageUrl: resolveMediaUrl(capture.image!),
                       fit: BoxFit.cover,
                       placeholder: (context, _) =>
                           Container(color: AppColors.surfaceSunken),

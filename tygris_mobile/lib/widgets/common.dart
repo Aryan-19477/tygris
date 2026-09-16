@@ -1,7 +1,105 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
+import '../core/api_client.dart';
 import '../core/theme.dart';
 import '../core/motion.dart';
+
+/// "Sep 15, 2026 · 2:30 PM" — the mobile equivalent of the web's
+/// toLocaleString(dateStyle: medium, timeStyle: short).
+String formatTimestamp(String? iso, {String fallback = 'Unknown time'}) {
+  if (iso == null || iso.isEmpty) return fallback;
+  final dt = DateTime.tryParse(iso);
+  if (dt == null) return iso;
+  return DateFormat('MMM d, yyyy · h:mm a').format(dt.toLocal());
+}
+
+/// Rounded selectable filter chip with an optional trailing count —
+/// the web's FilterPill, sized for thumbs.
+class ChoicePill extends StatelessWidget {
+  const ChoicePill({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.count,
+    this.leading,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final int? count;
+  final Widget? leading;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? AppColors.accentForeground : AppColors.mutedStrong;
+    return PressableScale(
+      onTap: onTap,
+      scaleDown: 0.94,
+      child: AnimatedContainer(
+        duration: AppMotionDuration.quick,
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.accent : AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(
+              color: selected ? AppColors.accentStrong : AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (leading != null) ...[leading!, const SizedBox(width: 6)],
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12.5, fontWeight: FontWeight.w600, color: fg)),
+            if (count != null) ...[
+              const SizedBox(width: 6),
+              Text('$count',
+                  style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: fg.withValues(alpha: 0.65))),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Network image for backend media paths, with a quiet sunken fallback.
+class MediaImage extends StatelessWidget {
+  const MediaImage({
+    super.key,
+    required this.path,
+    this.fallbackIcon = Icons.image_not_supported_outlined,
+    this.fit = BoxFit.cover,
+  });
+
+  final String? path;
+  final IconData fallbackIcon;
+  final BoxFit fit;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = Container(
+      color: AppColors.surfaceSunken,
+      alignment: Alignment.center,
+      child: Icon(fallbackIcon, size: 22, color: AppColors.muted),
+    );
+    if (path == null || path!.isEmpty) return fallback;
+    return CachedNetworkImage(
+      imageUrl: resolveMediaUrl(path!),
+      fit: fit,
+      placeholder: (_, __) => Container(color: AppColors.surfaceSunken),
+      errorWidget: (_, __, ___) => fallback,
+    );
+  }
+}
 
 /// Shared building blocks every screen should reuse for visual consistency.
 /// Signatures are stable — existing screens already depend on them — but

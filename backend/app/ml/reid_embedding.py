@@ -29,7 +29,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 
 TARGET_SIZE = (250, 200)  # (width, height) - fallback stub embedding only
 EMBED_DIM_STUB = 512
-EMBED_DIM_REAL = 128
+EMBED_DIM_REAL = 64  # matches convnext_metric_best.pth (train_reid_models.py's default) and models.py's [PAPER-SPECIFIED: 64-D]
 
 # Thumbnails already served to the frontend under /tigers/{tiger_id}.jpg;
 # both frontend/public/tigers and frontend-v2/public/tigers are copies of
@@ -74,6 +74,7 @@ class TigerReIDEngine:
         self.gallery_ids: List[str] = []
         self.gallery_embeddings: Optional[np.ndarray] = None
         self.real_model_loaded = False
+        self.load_error: Optional[str] = None
         self._model = None
         self._transform = None
         self._device = "cpu"
@@ -96,17 +97,16 @@ class TigerReIDEngine:
     # ------------------------------------------------------------------
     def _try_load_real_model(self) -> bool:
         if not (os.path.exists(REAL_CHECKPOINT) and os.path.exists(REAL_GALLERY_PATH)):
-            print(
-                f"[TigerReIDEngine] Real checkpoint/gallery not found "
-                f"({REAL_CHECKPOINT}, {REAL_GALLERY_PATH}) - using hash-based stub."
-            )
+            self.load_error = f"Real checkpoint/gallery not found ({REAL_CHECKPOINT}, {REAL_GALLERY_PATH})"
+            print(f"[TigerReIDEngine] {self.load_error} - using hash-based stub.")
             return False
         try:
             import torch
             from backend.app.ml.metric_learning.models import get_metric_model
             from backend.app.ml.representation.augmentations import get_paper_reid_transforms
         except ImportError as e:
-            print(f"[TigerReIDEngine] torch not available in this interpreter ({e}) - using hash-based stub.")
+            self.load_error = f"torch not available in this interpreter ({e})"
+            print(f"[TigerReIDEngine] {self.load_error} - using hash-based stub.")
             return False
 
         try:
@@ -121,7 +121,8 @@ class TigerReIDEngine:
             print(f"[TigerReIDEngine] Loaded REAL trained metric model from {REAL_CHECKPOINT} on {self._device}")
             return True
         except Exception as e:
-            print(f"[TigerReIDEngine] Failed to load real model: {e} - using hash-based stub.")
+            self.load_error = f"Failed to load real model: {e}"
+            print(f"[TigerReIDEngine] {self.load_error} - using hash-based stub.")
             return False
 
     def _build_real_gallery(self):

@@ -346,6 +346,8 @@ const TONE_TEXT_CLASS: Record<"positive" | "caution" | "neutral", string> = {
 
 function statusTone(status: TerritoryCheck["status"] | undefined, t: (k: string) => string) {
   switch (status) {
+    case "cameras_prioritized":
+      return { label: t("rangerReports.statusCamerasPrioritized"), tone: "positive" as const, icon: ShieldCheck };
     case "confirmed_present":
       return { label: t("rangerReports.statusConfirmed"), tone: "positive" as const, icon: CheckCircle };
     case "possible_move":

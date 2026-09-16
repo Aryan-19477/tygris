@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import {
+  House,
   MapTrifold,
   Bell,
   PawPrint,
   Fingerprint,
-  FilmStrip,
   Heart,
   Binoculars,
   Trash,
@@ -37,10 +37,10 @@ function isGroup(entry: NavEntry): entry is GroupItem {
 // next folds. Pairs & Family Groups joins the catalogue and ranger reports
 // under "Population".
 const NAV: NavEntry[] = [
+  { id: "home", key: "nav.home", icon: House },
   { id: "map", key: "nav.map", icon: MapTrifold },
   { id: "identify", key: "nav.identify", icon: Fingerprint },
   { id: "captures", key: "nav.captures", icon: Bell },
-  { id: "screening", key: "nav.screening", icon: FilmStrip },
   { id: "trash", key: "nav.trash", icon: Trash },
   {
     groupKey: "nav.population",

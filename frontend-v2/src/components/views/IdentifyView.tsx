@@ -1,35 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { MapPin, MagnifyingGlass, CheckCircle, Camera, Info } from "@phosphor-icons/react";
+import {
+  UploadSimple,
+  FilmStrip,
+  Star,
+  Fingerprint,
+  Target,
+  FlowArrow,
+  ArrowRight,
+} from "@phosphor-icons/react";
 import { TopBar } from "@/components/TopBar";
-import { Card, SectionLabel, Pill } from "@/components/ui";
+import { Card, SectionLabel } from "@/components/ui";
 import { IdentifyCapture } from "@/components/IdentifyCapture";
-import { api, type Stats, type GISStation } from "@/lib/api";
+import type { Stats } from "@/lib/api";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+
+const STEPS = [
+  { key: "upload", icon: UploadSimple, chips: ["JPG / PNG", "MP4 / MOV"], videoOnly: false },
+  { key: "screen", icon: FilmStrip, chips: ["YOLOv8n", "Coat check"], videoOnly: true },
+  { key: "best", icon: Star, chips: ["Quality score"], videoOnly: true },
+  { key: "embed", icon: Fingerprint, chips: ["ResNet50", "Triplet loss"], videoOnly: false },
+  { key: "match", icon: Target, chips: ["Cosine similarity"], videoOnly: false },
+] as const;
 
 export function IdentifyView({ stats }: { stats: Stats | null }) {
   const { t } = useLanguage();
-  const [stations, setStations] = useState<GISStation[]>([]);
-  const [station, setStation] = useState<GISStation | null>(null);
-  const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    api.stations().then((res) => setStations(res.stations)).catch(() => {});
-  }, []);
-
-  const filtered = useMemo(() => {
-    if (!query.trim()) return stations.slice(0, 40);
-    const q = query.toLowerCase();
-    return stations
-      .filter(
-        (s) =>
-          s.camera_id.toLowerCase().includes(q) ||
-          (s.sub_region || "").toLowerCase().includes(q) ||
-          s.zone.toLowerCase().includes(q)
-      )
-      .slice(0, 40);
-  }, [stations, query]);
 
   return (
     <div>
@@ -39,92 +34,98 @@ export function IdentifyView({ stats }: { stats: Stats | null }) {
         alertCount={stats?.pending_review ?? 0}
       />
 
-      <div className="grid grid-cols-1 gap-0 lg:grid-cols-[360px_1fr]">
-        <div className="border-r border-border px-6 py-6">
-          <SectionLabel icon={<MapPin size={13} />} className="mb-3">
-            {t("identify.cameraStation")}
-          </SectionLabel>
+      <div className="mx-auto max-w-6xl space-y-8 px-5 py-6 sm:px-8">
+        <Card padding="lg">
+          <IdentifyCapture />
+        </Card>
 
-          {station ? (
-            <div className="mb-4 flex items-center justify-between rounded-xl border border-accent/40 bg-accent-soft p-3.5">
-              <div>
-                <div className="font-mono text-sm font-semibold text-foreground">{station.camera_id}</div>
-                <div className="text-xs text-muted">{station.zone} — {station.sub_region || t("common.unknownRange")}</div>
-              </div>
-              <button
-                onClick={() => setStation(null)}
-                className="rounded-full border border-border-strong bg-surface px-3 py-1 text-xs font-medium text-foreground hover:bg-surface-sunken"
-              >
-                {t("identify.change")}
-              </button>
+        <section>
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <SectionLabel icon={<FlowArrow size={13} />} className="mb-1">
+                {t("identify.pipeline.label")}
+              </SectionLabel>
+              <h2 className="font-serif text-xl font-medium text-foreground">
+                {t("identify.pipeline.title")}
+              </h2>
             </div>
-          ) : (
-            <>
-              <div className="relative mb-3">
-                <MagnifyingGlass size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={t("identify.searchPlaceholder")}
-                  className="w-full rounded-xl border border-border bg-surface py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
-                />
-              </div>
-
-              <div className="max-h-125 space-y-1.5 overflow-y-auto pr-1">
-                {filtered.map((s) => (
-                  <button
-                    key={s.camera_id}
-                    onClick={() => setStation(s)}
-                    className="flex w-full items-center justify-between rounded-lg border border-border bg-surface px-3 py-2.5 text-left transition-colors hover:border-accent/40 hover:bg-accent-soft"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Camera size={14} className="text-muted" />
-                      <div>
-                        <div className="font-mono text-xs font-semibold text-foreground">{s.camera_id}</div>
-                        <div className="text-[11px] text-muted">{s.sub_region || s.zone}</div>
-                      </div>
-                    </div>
-                    <Pill tone={s.operational_status === "OPERATIONAL" ? "positive" : "danger"}>
-                      {s.operational_status === "OPERATIONAL" ? t("common.online") : t("common.offline")}
-                    </Pill>
-                  </button>
-                ))}
-                {filtered.length === 0 && (
-                  <div className="rounded-xl border border-dashed border-border-strong p-6 text-center text-xs text-muted">
-                    {t("identify.noStationsMatch", { query })}
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={() => setStation(null)}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border-strong px-3 py-2 text-xs font-medium text-muted hover:border-accent/40 hover:text-foreground"
-              >
-                {t("identify.skip")}
-              </button>
-            </>
-          )}
-
-          <div className="mt-6 flex items-start gap-2 rounded-xl bg-surface-sunken p-3.5 text-xs text-muted">
-            <Info size={14} className="mt-0.5 shrink-0" />
-            <span>{t("identify.infoText")}</span>
-          </div>
-        </div>
-
-        <div className="px-6 py-6 sm:px-8">
-          {station && (
-            <div className="mb-4 flex items-center gap-2 text-xs text-muted">
-              <CheckCircle size={14} className="text-positive" />
-              <span>
-                {t("identify.uploadingFor")} <span className="font-mono font-semibold text-foreground">{station.camera_id}</span>
+            <div className="flex items-center gap-3 text-[11px] text-muted">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-accent" /> {t("identify.pipeline.allUploads")}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full border border-dashed border-accent" />{" "}
+                {t("identify.pipeline.videoOnly")}
               </span>
             </div>
-          )}
-          <Card padding="lg">
-            <IdentifyCapture key={station?.camera_id ?? "none"} stationId={station?.camera_id} />
-          </Card>
-        </div>
+          </div>
+
+          <ol className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {STEPS.map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <li
+                  key={s.key}
+                  className={`relative flex flex-col rounded-xl border bg-surface p-4 ${
+                    s.videoOnly ? "border-dashed border-accent/50" : "border-border"
+                  }`}
+                >
+                  {i < STEPS.length - 1 && (
+                    <span className="absolute -right-3.5 top-9 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted lg:flex">
+                      <ArrowRight size={11} weight="bold" />
+                    </span>
+                  )}
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                      <Icon size={18} weight="duotone" />
+                    </div>
+                    <span className="font-mono text-[11px] font-semibold text-muted">0{i + 1}</span>
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {t(`identify.pipeline.${s.key}.title`)}
+                  </h3>
+                  {s.videoOnly && (
+                    <span className="mt-1 w-fit rounded-full bg-accent-soft px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-accent">
+                      {t("identify.pipeline.videoOnly")}
+                    </span>
+                  )}
+                  <p className="mt-2 flex-1 text-xs leading-relaxed text-muted">
+                    {t(`identify.pipeline.${s.key}.body`)}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-1">
+                    {s.chips.map((c) => (
+                      <span
+                        key={c}
+                        className="rounded border border-border bg-surface-sunken px-1.5 py-0.5 font-mono text-[10px] text-foreground"
+                      >
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <Fact
+              value={stats?.total_individuals != null ? String(stats.total_individuals) : "—"}
+              label={t("identify.pipeline.factGallery")}
+            />
+            <Fact value="3 fps" label={t("identify.pipeline.factSampling")} />
+            <Fact value="4" label={t("identify.pipeline.factFilters")} />
+          </div>
+        </section>
       </div>
+    </div>
+  );
+}
+
+function Fact({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3">
+      <span className="font-mono text-xl font-semibold text-foreground">{value}</span>
+      <span className="text-xs leading-snug text-muted">{label}</span>
     </div>
   );
 }

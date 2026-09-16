@@ -1186,8 +1186,8 @@
     },
     {
       "name": "Paoni",
-      "lat": 21.51,
-      "lon": 79.22,
+      "lat": 21.47909,
+      "lon": 79.20319,
       "population": 2400,
       "livestock": 1100
     },
@@ -1249,8 +1249,8 @@
     },
     {
       "name": "Chargaon",
-      "lat": 21.498,
-      "lon": 79.26,
+      "lat": 21.50817,
+      "lon": 79.27352,
       "population": 1100,
       "livestock": 560
     },
@@ -1333,8 +1333,8 @@
     },
     {
       "name": "Wadamba",
-      "lat": 21.555,
-      "lon": 79.155,
+      "lat": 21.54864,
+      "lon": 79.14489,
       "population": 290,
       "livestock": 140
     },
@@ -1410,15 +1410,15 @@
     },
     {
       "name": "Tekadi",
-      "lat": 21.512,
-      "lon": 79.25,
+      "lat": 21.52427,
+      "lon": 79.25943,
       "population": 610,
       "livestock": 300
     },
     {
       "name": "Ambajhari Khurd",
-      "lat": 21.565,
-      "lon": 79.135,
+      "lat": 21.53922,
+      "lon": 79.16641,
       "population": 310,
       "livestock": 150
     },
@@ -1452,15 +1452,15 @@
     },
     {
       "name": "Gowari",
-      "lat": 21.528,
-      "lon": 79.19,
+      "lat": 21.52189,
+      "lon": 79.17646,
       "population": 340,
       "livestock": 170
     },
     {
       "name": "Sitagondi",
-      "lat": 21.542,
-      "lon": 79.16,
+      "lat": 21.53534,
+      "lon": 79.1545,
       "population": 280,
       "livestock": 140
     },
@@ -1473,8 +1473,8 @@
     },
     {
       "name": "Mansar Fringe",
-      "lat": 21.49,
-      "lon": 79.27,
+      "lat": 21.46831,
+      "lon": 79.24012,
       "population": 3200,
       "livestock": 1400
     }

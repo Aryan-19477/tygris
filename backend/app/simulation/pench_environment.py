@@ -133,7 +133,7 @@ SUB_REGIONS: List[Dict[str, Any]] = [
 VILLAGES_44: List[Dict[str, Any]] = [
     {"name": "Sillari", "lat": 21.612, "lon": 79.385, "population": 1800, "livestock": 850},
     {"name": "Pipariya", "lat": 21.580, "lon": 79.375, "population": 1200, "livestock": 620},
-    {"name": "Paoni", "lat": 21.510, "lon": 79.220, "population": 2400, "livestock": 1100},
+    {"name": "Paoni", "lat": 21.47909, "lon": 79.20319, "population": 2400, "livestock": 1100},
     {"name": "Khursapar", "lat": 21.555, "lon": 79.110, "population": 900, "livestock": 430},
     {"name": "Bodhali", "lat": 21.620, "lon": 79.098, "population": 1100, "livestock": 510},
     {"name": "Awarghani", "lat": 21.670, "lon": 79.098, "population": 750, "livestock": 380},
@@ -142,7 +142,7 @@ VILLAGES_44: List[Dict[str, Any]] = [
     {"name": "Chikhli", "lat": 21.770, "lon": 79.200, "population": 950, "livestock": 480},
     {"name": "Karegaon", "lat": 21.765, "lon": 79.280, "population": 700, "livestock": 340},
     {"name": "Navegaon", "lat": 21.505, "lon": 79.310, "population": 1600, "livestock": 780},
-    {"name": "Chargaon", "lat": 21.498, "lon": 79.260, "population": 1100, "livestock": 560},
+    {"name": "Chargaon", "lat": 21.50817, "lon": 79.27352, "population": 1100, "livestock": 560},
     {"name": "Surera", "lat": 21.510, "lon": 79.175, "population": 800, "livestock": 390},
     {"name": "Dongartal", "lat": 21.530, "lon": 79.145, "population": 600, "livestock": 310},
     {"name": "Sawara", "lat": 21.515, "lon": 79.200, "population": 550, "livestock": 270},
@@ -154,7 +154,7 @@ VILLAGES_44: List[Dict[str, Any]] = [
     {"name": "Ghatpendhari", "lat": 21.760, "lon": 79.235, "population": 610, "livestock": 310},
     {"name": "Bandara", "lat": 21.752, "lon": 79.260, "population": 440, "livestock": 210},
     {"name": "Fulzari", "lat": 21.545, "lon": 79.130, "population": 350, "livestock": 180},
-    {"name": "Wadamba", "lat": 21.555, "lon": 79.155, "population": 290, "livestock": 140},
+    {"name": "Wadamba", "lat": 21.54864, "lon": 79.14489, "population": 290, "livestock": 140},
     {"name": "Hiwra", "lat": 21.758, "lon": 79.215, "population": 510, "livestock": 240},
     {"name": "Dhamni", "lat": 21.660, "lon": 79.400, "population": 720, "livestock": 360},
     {"name": "Usaripar", "lat": 21.635, "lon": 79.398, "population": 430, "livestock": 220},
@@ -165,16 +165,16 @@ VILLAGES_44: List[Dict[str, Any]] = [
     {"name": "Doma", "lat": 21.745, "lon": 79.185, "population": 390, "livestock": 180},
     {"name": "Bichhua", "lat": 21.765, "lon": 79.310, "population": 1100, "livestock": 530},
     {"name": "Gomatla", "lat": 21.502, "lon": 79.285, "population": 520, "livestock": 260},
-    {"name": "Tekadi", "lat": 21.512, "lon": 79.250, "population": 610, "livestock": 300},
-    {"name": "Ambajhari Khurd", "lat": 21.565, "lon": 79.135, "population": 310, "livestock": 150},
+    {"name": "Tekadi", "lat": 21.52427, "lon": 79.25943, "population": 610, "livestock": 300},
+    {"name": "Ambajhari Khurd", "lat": 21.53922, "lon": 79.16641, "population": 310, "livestock": 150},
     {"name": "Pindkapar", "lat": 21.680, "lon": 79.102, "population": 470, "livestock": 230},
     {"name": "Kadbikheda", "lat": 21.705, "lon": 79.105, "population": 360, "livestock": 180},
     {"name": "Suwardhara", "lat": 21.715, "lon": 79.380, "population": 410, "livestock": 200},
     {"name": "Pardi", "lat": 21.575, "lon": 79.390, "population": 530, "livestock": 270},
-    {"name": "Gowari", "lat": 21.528, "lon": 79.190, "population": 340, "livestock": 170},
-    {"name": "Sitagondi", "lat": 21.542, "lon": 79.160, "population": 280, "livestock": 140},
+    {"name": "Gowari", "lat": 21.52189, "lon": 79.17646, "population": 340, "livestock": 170},
+    {"name": "Sitagondi", "lat": 21.53534, "lon": 79.1545, "population": 280, "livestock": 140},
     {"name": "Khapa", "lat": 21.645, "lon": 79.100, "population": 820, "livestock": 410},
-    {"name": "Mansar Fringe", "lat": 21.490, "lon": 79.270, "population": 3200, "livestock": 1400}
+    {"name": "Mansar Fringe", "lat": 21.46831, "lon": 79.24012, "population": 3200, "livestock": 1400}
 ]
 
 # Major Water Bodies / Nallahs in Pench

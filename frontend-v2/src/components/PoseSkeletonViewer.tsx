@@ -23,17 +23,24 @@ export interface PoseSkeletonProps {
   className?: string;
 }
 
-// Canonical ATRW 15-Point Topology Connections
+// Canonical ATRW 15-Point Topology Connections. Must match the keypoint ID
+// numbering the backend actually assigns (see
+// backend/app/ml/pose/pose_extractor.py's POSE_KEYPOINTS_15 /
+// SKELETON_CONNECTIONS — 0=Nose, 1/2=Eyes, 3/4=Ears, 5=Neck,
+// 6/7=Shoulders, 8/9=Front Paws, 10/11=Hips, 12/13=Back Paws,
+// 14=Tail Base), since `keypoints` normally comes straight from that API
+// response. This is only the fallback used when the caller doesn't pass its
+// own `connections` (as TigerDossierView now does with the backend's
+// `pose_analysis.skeleton_connections`).
 const DEFAULT_CONNECTIONS: [number, number][] = [
-  [2, 0], [2, 1],       // Nose to Left/Right Eye
-  [0, 13], [1, 13],     // Eyes to Neck
-  [13, 14],             // Neck to Spine Center
-  [14, 11],             // Spine to Tail Base
-  [11, 12],             // Tail Base to Tail Tip
-  [13, 3], [3, 4],      // Right Shoulder to Right Paw
-  [13, 5], [5, 6],      // Left Shoulder to Left Paw
-  [14, 7], [7, 8],      // Right Hip to Right Paw
-  [14, 9], [9, 10],     // Left Hip to Left Paw
+  [0, 1], [0, 2],       // Nose to Eyes
+  [1, 3], [2, 4],       // Eyes to Ears
+  [1, 5], [2, 5],       // Head to Neck
+  [5, 6], [5, 7],       // Neck to Shoulders
+  [6, 8], [7, 9],       // Shoulders to Front Paws
+  [5, 14],              // Spine: Neck to Tail Base
+  [14, 10], [14, 11],   // Tail Base to Hips
+  [10, 12], [11, 13],   // Hips to Back Paws
 ];
 
 export function PoseSkeletonViewer({
@@ -42,8 +49,12 @@ export function PoseSkeletonViewer({
   connections = DEFAULT_CONNECTIONS,
   flankSide = "Left",
   confidence = 0.98,
-  width = 640,
-  height = 360,
+  // Matches the fixed 1920x1080 canonical pixel space the backend generates
+  // keypoints in (see pose_extractor.py's get_pose_for_image default args) —
+  // the SVG viewBox must agree with that space or every keypoint renders
+  // far outside the visible frame instead of on the tiger.
+  width = 1920,
+  height = 1080,
   className = "",
 }: PoseSkeletonProps) {
   const { t } = useLanguage();

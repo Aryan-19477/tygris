@@ -885,7 +885,7 @@ class _Thumbnail extends StatelessWidget {
         child: url == null || url!.isEmpty
             ? _placeholder()
             : CachedNetworkImage(
-                imageUrl: url!,
+                imageUrl: resolveMediaUrl(url!),
                 fit: BoxFit.cover,
                 placeholder: (context, _) => _loadingBox(),
                 errorWidget: (context, _, __) => _placeholder(),

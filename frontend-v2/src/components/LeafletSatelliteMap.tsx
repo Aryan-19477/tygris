@@ -91,6 +91,15 @@ interface LeafletSatelliteMapProps {
   layers: MapLayerToggles;
   onSelectStation: (station: GISStation) => void;
   onSelectTiger: (tigerId: string) => void;
+  /** Hide the basemap switcher, recenter button, and legend — for use as a
+   * full-bleed hero background where a host view provides its own chrome. */
+  chrome?: boolean;
+  /** Drop the panel border/rounding/shadow so the map can bleed edge to edge. */
+  bare?: boolean;
+  /** Extra fitBounds padding, in px, per side — lets a host view reserve
+   * screen space (e.g. a floating card column) that the auto-fit and
+   * "Reset Pench View" should treat as unusable for the map content. */
+  fitPadding?: { topLeft?: [number, number]; bottomRight?: [number, number] };
 }
 
 const ALERT_COLORS: Record<string, string> = {
@@ -160,6 +169,9 @@ export function LeafletSatelliteMap({
   layers,
   onSelectStation,
   onSelectTiger,
+  chrome = true,
+  bare = false,
+  fitPadding,
 }: LeafletSatelliteMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMap | null>(null);
@@ -286,7 +298,9 @@ export function LeafletSatelliteMap({
         corePolyRef.current = corePoly;
 
         if (!selectedTigerId && !selectedStation) {
-          currentMap.fitBounds(corePoly.getBounds(), { padding: [35, 35] });
+          currentMap.fitBounds(corePoly.getBounds(), fitPadding
+            ? { paddingTopLeft: fitPadding.topLeft ?? [35, 35], paddingBottomRight: fitPadding.bottomRight ?? [35, 35] }
+            : { padding: [35, 35] });
         }
       }
 
@@ -455,7 +469,7 @@ export function LeafletSatelliteMap({
         groups.lastSeen = lastSeenGroup;
       }
     });
-  }, [bundle, layers, selectedStation, selectedTigerId, mapReady, onSelectStation, onSelectTiger]);
+  }, [bundle, layers, selectedStation, selectedTigerId, mapReady, onSelectStation, onSelectTiger, fitPadding]);
 
   // 4. Smooth Focus to Selected Tiger or Station
   useEffect(() => {
@@ -477,66 +491,76 @@ export function LeafletSatelliteMap({
     if (!currentMap) return;
 
     if (corePolyRef.current) {
-      currentMap.fitBounds(corePolyRef.current.getBounds(), { padding: [35, 35] });
+      currentMap.fitBounds(corePolyRef.current.getBounds(), fitPadding
+        ? { paddingTopLeft: fitPadding.topLeft ?? [35, 35], paddingBottomRight: fitPadding.bottomRight ?? [35, 35] }
+        : { padding: [35, 35] });
     } else {
       currentMap.flyTo([21.65, 79.25], 11, { duration: 1.0 });
     }
   };
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-2xl border border-border bg-zinc-950 shadow-2xl">
-      <div ref={mapContainerRef} className="h-full w-full z-0" style={{ minHeight: "560px" }} />
+    <div
+      className={`relative h-full w-full overflow-hidden bg-zinc-950 ${
+        bare ? "" : "rounded-2xl border border-border shadow-2xl"
+      }`}
+    >
+      <div ref={mapContainerRef} className="h-full w-full z-0" style={{ minHeight: bare ? undefined : "560px" }} />
 
-      <div className="absolute top-3 left-3 z-1000 flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-950/80 p-1 backdrop-blur-md shadow-2xl">
-        {(Object.keys(BASEMAP_TILES) as BasemapStyle[]).map((style) => {
-          const isActive = basemap === style;
-          return (
-            <button
-              key={style}
-              onClick={() => setBasemap(style)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-mono font-medium transition-all ${
-                isActive
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
-              }`}
-            >
-              {BASEMAP_TILES[style].name}
-            </button>
-          );
-        })}
-      </div>
-
-      <button
-        onClick={handleRecenter}
-        className="absolute top-3 right-14 z-1000 flex items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-1 text-xs font-mono font-medium text-zinc-200 backdrop-blur-md shadow-2xl hover:bg-white/10 hover:text-white transition-all"
-      >
-        <span>Reset Pench View</span>
-      </button>
-
-      <div className="absolute bottom-4 left-4 z-1000 rounded-xl border border-white/10 bg-zinc-950/85 p-3 text-xs font-mono backdrop-blur-md space-y-1.5 shadow-2xl">
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          <span className="text-zinc-300 text-[11px]">Core Forest Reserve (439 km²)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-cyan-400" />
-          <span className="text-zinc-300 text-[11px]">Buffer Zone (301 km²)</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-amber-400" />
-          <span className="text-zinc-300 text-[11px]">Fringe Villages</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
-          <span className="text-zinc-300 text-[11px]">Camera Trap Stations</span>
-        </div>
-        {layers.lastSeen && (
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-white ring-2 ring-emerald-400" />
-            <span className="text-zinc-300 text-[11px]">Tigers Last Seen</span>
+      {chrome && (
+        <>
+          <div className="absolute top-3 left-3 z-1000 flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-950/80 p-1 backdrop-blur-md shadow-2xl">
+            {(Object.keys(BASEMAP_TILES) as BasemapStyle[]).map((style) => {
+              const isActive = basemap === style;
+              return (
+                <button
+                  key={style}
+                  onClick={() => setBasemap(style)}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-mono font-medium transition-all ${
+                    isActive
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5"
+                  }`}
+                >
+                  {BASEMAP_TILES[style].name}
+                </button>
+              );
+            })}
           </div>
-        )}
-      </div>
+
+          <button
+            onClick={handleRecenter}
+            className="absolute top-3 right-14 z-1000 flex items-center gap-1.5 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-1 text-xs font-mono font-medium text-zinc-200 backdrop-blur-md shadow-2xl hover:bg-white/10 hover:text-white transition-all"
+          >
+            <span>Reset Pench View</span>
+          </button>
+
+          <div className="absolute bottom-4 left-4 z-1000 rounded-xl border border-white/10 bg-zinc-950/85 p-3 text-xs font-mono backdrop-blur-md space-y-1.5 shadow-2xl">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <span className="text-zinc-300 text-[11px]">Core Forest Reserve (439 km²)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-cyan-400" />
+              <span className="text-zinc-300 text-[11px]">Buffer Zone (301 km²)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-amber-400" />
+              <span className="text-zinc-300 text-[11px]">Fringe Villages</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="text-zinc-300 text-[11px]">Camera Trap Stations</span>
+            </div>
+            {layers.lastSeen && (
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-white ring-2 ring-emerald-400" />
+                <span className="text-zinc-300 text-[11px]">Tigers Last Seen</span>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

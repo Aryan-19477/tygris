@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import '../models/models.dart';
 
+export 'api_client.dart' show resolveMediaUrl, describeError;
+
 const String kBaseUrlPrefKey = 'tygris_base_url';
 
 /// Single repository every screen talks to — wraps ApiClient with the exact
@@ -104,6 +106,63 @@ class TygrisRepository {
   Future<ModelStatus> modelStatus() => _guard(() async {
         final res = await _dio.get('/api/model-status');
         return ModelStatus.fromJson(res.data as Map<String, dynamic>);
+      });
+
+  Future<({List<CaptureLogItem> items, String? nextBefore})> captures({
+    int limit = 30,
+    String? before,
+    String? cameraId,
+    String? tigerId,
+  }) =>
+      _guard(() async {
+        final res = await _dio.get('/api/captures', queryParameters: {
+          'limit': limit,
+          if (before != null) 'before': before,
+          if (cameraId != null) 'camera_id': cameraId,
+          if (tigerId != null) 'tiger_id': tigerId,
+        });
+        final list = (res.data['items'] as List<dynamic>? ?? []);
+        return (
+          items: list
+              .map((e) => CaptureLogItem.fromJson(e as Map<String, dynamic>))
+              .toList(),
+          nextBefore: res.data['next_before'] as String?,
+        );
+      });
+
+  Future<List<TigerAssociationPair>> tigerAssociations({
+    int limit = 10,
+    bool oppositeSexOnly = true,
+    int windowHours = 48,
+  }) =>
+      _guard(() async {
+        final res = await _dio.get('/api/tiger-associations', queryParameters: {
+          'limit': limit,
+          'opposite_sex_only': oppositeSexOnly,
+          'window_hours': windowHours,
+        });
+        final list = (res.data['pairs'] as List<dynamic>? ?? []);
+        return list
+            .map((e) =>
+                TigerAssociationPair.fromJson(e as Map<String, dynamic>))
+            .toList();
+      });
+
+  Future<RangerReports> rangerReports() => _guard(() async {
+        final res = await _dio.get('/api/ranger/reports');
+        return RangerReports.fromJson(res.data as Map<String, dynamic>);
+      });
+
+  Future<TerritoryCheck> runTerritoryCheck(String observationId) =>
+      _guard(() async {
+        final res = await _dio.post(
+            '/api/ranger/territory-check/${Uri.encodeComponent(observationId)}');
+        return TerritoryCheck.fromJson(res.data as Map<String, dynamic>);
+      });
+
+  Future<int> runPendingTerritoryChecks() => _guard(() async {
+        final res = await _dio.post('/api/ranger/territory-check/run-pending');
+        return res.data['processed'] as int? ?? 0;
       });
 }
 

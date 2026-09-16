@@ -23,14 +23,21 @@ export function TigerCatalogueView({
 }) {
   const { t } = useLanguage();
   const [individuals, setIndividuals] = useState<GalleryIndividual[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
 
   useEffect(() => {
-    api.gallery().then((res) =>
-      setIndividuals([...res.individuals].sort((a, b) => a.tiger_id.localeCompare(b.tiger_id)))
-    );
-  }, []);
+    api.gallery()
+      .then((res) => {
+        setError(null);
+        setIndividuals([...res.individuals].sort((a, b) => a.tiger_id.localeCompare(b.tiger_id)));
+      })
+      .catch((err) => {
+        console.error("[TigerCatalogueView] Error fetching gallery:", err);
+        setError(t("catalogue.fetchError"));
+      });
+  }, [t]);
 
   const filtered = useMemo(() => {
     if (!individuals) return null;
@@ -73,9 +80,15 @@ export function TigerCatalogueView({
           <FilterPill active={filter === "multi-station"} onClick={() => setFilter("multi-station")}>{t("catalogue.filterMulti")}</FilterPill>
         </div>
 
-        {!filtered && <TigerGridSkeleton />}
+        {error && (
+          <div className="mb-6 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-xs font-mono text-danger">
+            {error}
+          </div>
+        )}
 
-        {filtered && filtered.length === 0 && (
+        {!individuals && !error && <TigerGridSkeleton />}
+
+        {individuals && filtered && filtered.length === 0 && (
           <EmptyState title={t("catalogue.noMatch")} subtitle={t("catalogue.tryDifferentFilter")} />
         )}
 

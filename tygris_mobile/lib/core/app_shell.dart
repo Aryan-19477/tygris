@@ -12,6 +12,10 @@ import '../screens/tiger_catalogue_screen.dart';
 import '../screens/station_health_screen.dart';
 import '../screens/blank_frame_trash_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/overview_screen.dart';
+import '../screens/capture_log_screen.dart';
+import '../screens/pairs_screen.dart';
+import '../screens/ranger_reports_screen.dart';
 
 class _NavItem {
   const _NavItem(this.icon, this.activeIcon, this.label);
@@ -60,21 +64,29 @@ class _AppShellState extends State<AppShell> {
 
   void _openMore(BuildContext context) {
     HapticFeedback.lightImpact();
+    void open(BuildContext ctx, Widget screen) {
+      Navigator.pop(ctx);
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+    }
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _MoreSheet(
-        onTrash: () {
-          Navigator.pop(ctx);
-          Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const BlankFrameTrashScreen()));
-        },
-        onSettings: () {
-          Navigator.pop(ctx);
-          Navigator.of(context)
-              .push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
-        },
-      ),
+      builder: (ctx) => _MoreSheet(entries: [
+        _SheetEntry(Icons.dashboard_outlined, 'Overview',
+            () => open(ctx, const OverviewScreen())),
+        _SheetEntry(Icons.photo_library_outlined, 'Capture Log',
+            () => open(ctx, const CaptureLogScreen())),
+        _SheetEntry(Icons.favorite_outline_rounded, 'Pairs & Family Groups',
+            () => open(ctx, const PairsScreen())),
+        _SheetEntry(Icons.travel_explore_rounded, 'Ranger Reports',
+            () => open(ctx, const RangerReportsScreen())),
+        _SheetEntry(Icons.delete_outline_rounded, 'Blank Frame Trash',
+            () => open(ctx, const BlankFrameTrashScreen())),
+        _SheetEntry(Icons.settings_outlined, 'Settings',
+            () => open(ctx, const SettingsScreen())),
+      ]),
     );
   }
 
@@ -88,7 +100,7 @@ class _AppShellState extends State<AppShell> {
         selectedIndex: _index,
         onSelect: _select,
         onMore: () => _openMore(context),
-        showMore: _index == 0,
+        showMore: true,
       ),
     );
   }
@@ -115,11 +127,14 @@ class _FloatingNavIsland extends StatelessWidget {
       minimum: const EdgeInsets.only(bottom: 14),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        // Scales the island down on narrow phones (≤360dp) instead of
+        // overflowing; no-op on wider screens.
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Flexible(
-              child: ClipRRect(
+            ClipRRect(
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
@@ -154,12 +169,12 @@ class _FloatingNavIsland extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
             if (showMore) ...[
               const SizedBox(width: 10),
               _MoreFab(onTap: onMore),
             ],
           ],
+          ),
         ),
       ),
     );
@@ -248,15 +263,21 @@ class _MoreFab extends StatelessWidget {
   }
 }
 
+class _SheetEntry {
+  const _SheetEntry(this.icon, this.label, this.onTap);
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+}
+
 class _MoreSheet extends StatelessWidget {
-  const _MoreSheet({required this.onTrash, required this.onSettings});
-  final VoidCallback onTrash;
-  final VoidCallback onSettings;
+  const _MoreSheet({required this.entries});
+  final List<_SheetEntry> entries;
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
             AppSpace.lg, AppSpace.sm, AppSpace.lg, AppSpace.lg),
         child: Column(
@@ -275,17 +296,14 @@ class _MoreSheet extends StatelessWidget {
               padding: EdgeInsets.zero,
               child: Column(
                 children: [
-                  _SheetTile(
-                    icon: Icons.delete_outline_rounded,
-                    label: 'Blank Frame Trash',
-                    onTap: onTrash,
-                  ),
-                  const Divider(height: 1, indent: 56),
-                  _SheetTile(
-                    icon: Icons.settings_outlined,
-                    label: 'Settings',
-                    onTap: onSettings,
-                  ),
+                  for (var i = 0; i < entries.length; i++) ...[
+                    if (i > 0) const Divider(height: 1, indent: 56),
+                    _SheetTile(
+                      icon: entries[i].icon,
+                      label: entries[i].label,
+                      onTap: entries[i].onTap,
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -12,6 +12,7 @@ import '../core/supabase_config.dart';
 import '../core/sync_status.dart';
 import '../data/repository.dart';
 import '../data/supabase_mapping.dart';
+import '../models/patrol.dart';
 import '../models/sync_queue_item.dart';
 
 /// *** REAL SYNC WHEN CONFIGURED, SIMULATED OTHERWISE ***
@@ -329,6 +330,33 @@ class SyncQueueService {
     }
     try {
       await client.from('rangers').upsert(rangerToSupabaseRow(r));
+    } catch (_) {}
+  }
+
+  /// Live telemetry push for an *in-progress* patrol — called periodically by
+  /// [ActivePatrolController] while a patrol is active, separate from the
+  /// end-of-patrol sync-queue save. Upserts the patrol's current draft row
+  /// (`status: active`) and only the GPS points at index >= [fromIndex]
+  /// (`upsert` on `point_id`, so a retried push after a partial failure can't
+  /// create duplicates). This lets the backend's poll loop see a ranger's
+  /// live position — and classify buffer-zone crossings — as the patrol
+  /// happens, instead of only after the ranger ends and saves it. Silently
+  /// no-ops when Supabase isn't configured; any network/RLS failure is
+  /// swallowed since this is best-effort telemetry, not a durable record —
+  /// the authoritative save still goes through the sync queue on patrol end.
+  Future<void> pushLivePatrolUpdate(Patrol patrol, {required int fromIndex}) async {
+    if (!supabaseReady) return;
+    try {
+      final client = Supabase.instance.client;
+      await _ensureRangerAndTeam(client, patrol.rangerId);
+      final pRow = patrolToSupabaseRow(patrol);
+      await client.from('patrols').upsert(pRow);
+      if (fromIndex < patrol.route.length) {
+        final newRows = patrolRouteToSupabaseRows(patrol).sublist(fromIndex);
+        if (newRows.isNotEmpty) {
+          await client.from('gps_track_points').upsert(newRows, onConflict: 'point_id');
+        }
+      }
     } catch (_) {}
   }
 

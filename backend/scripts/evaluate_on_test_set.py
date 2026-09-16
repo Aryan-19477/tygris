@@ -77,7 +77,7 @@ def main():
     train_items, val_items = split_train_val(images_by_tiger)
     print(f"Gallery (train-only) images: {len(train_items)}  Test queries (val): {len(val_items)}", flush=True)
 
-    model = get_metric_model(name="ConvNeXt-small", embedding_dim=128, pretrained=False)
+    model = get_metric_model(name="ConvNeXt-small", embedding_dim=64, pretrained=False)
     model.load_state_dict(torch.load(CHECKPOINT, map_location=DEVICE, weights_only=True))
     model.to(DEVICE).eval()
 

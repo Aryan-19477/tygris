@@ -59,6 +59,11 @@ def main(model, split_seed=42, held_out=3):
 
     emb, labels = compute_embeddings(model, val_items)
     acc = rank_k_accuracy(emb, labels, emb, labels, k=5, exclude_self=True)
+    print("[CLOSED-SET, LEAKY] every identity here was already seen by the "
+          "pretrained classifier backbone AND by triplet fine-tuning (other "
+          "images of it) — high accuracy is consistent with memorization, "
+          "not generalization. See train_embedding.py's open_world_accuracy() "
+          "for the metric that actually measures novel-identity performance.")
     for rank, a in enumerate(acc, start=1):
         print(f"rank-{rank} accuracy (leave-one-out within held-out set): {a:.4f}")
     return emb, labels, acc

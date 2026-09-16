@@ -18,6 +18,24 @@ async function askAssistant(message: string, lang: Lang): Promise<string> {
 
 type Status = "idle" | "listening" | "thinking" | "speaking" | "error";
 
+const SPEECH_LOCALES: Record<Lang, string> = { en: "en-IN", hi: "hi-IN", mr: "mr-IN" };
+
+function speakInBrowser(text: string, lang: Lang, setStatus: (s: Status) => void, onFail: () => void) {
+  if (typeof window === "undefined" || !window.speechSynthesis) return onFail();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  const locale = SPEECH_LOCALES[lang];
+  utterance.lang = locale;
+  const voice = window.speechSynthesis.getVoices().find((v) => v.lang === locale || v.lang.startsWith(lang));
+  if (voice) utterance.voice = voice;
+  utterance.onend = () => setStatus("idle");
+  utterance.onerror = onFail;
+
+  window.speechSynthesis.cancel();
+  setStatus("speaking");
+  window.speechSynthesis.speak(utterance);
+}
+
 const RECORD_MS = 5000;
 
 function pickMimeType(): string {
@@ -120,6 +138,8 @@ export default function VoiceAgentButton() {
       return;
     }
 
+    setHeard(answer);
+
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
@@ -129,14 +149,21 @@ export default function VoiceAgentButton() {
       if (!res.ok) throw new Error("TTS request failed");
 
       const blob = await res.blob();
-      const audio = new Audio(URL.createObjectURL(blob));
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
       setStatus("speaking");
-      audio.onended = () => setStatus("idle");
-      audio.play();
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        setStatus("idle");
+      };
+      await audio.play();
     } catch (err) {
-      console.error(err);
-      setStatus("error");
-      setErrorMsg(err instanceof Error ? err.message : t("voice.replyFailed"));
+      // ElevenLabs and Groq voices both unavailable — speak with the browser instead.
+      console.warn("[voice] server TTS failed, using browser speech:", err);
+      speakInBrowser(answer, lang, setStatus, () => {
+        setStatus("error");
+        setErrorMsg(t("voice.replyFailed"));
+      });
     }
   };
 

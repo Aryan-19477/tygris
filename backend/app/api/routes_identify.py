@@ -32,6 +32,7 @@ async def model_status():
         "weights_loaded": {"embedding_model": engine.real_model_loaded, "reference_gallery": gallery_size > 0},
         "gallery_size": gallery_size,
         "checkpoints_dir": os.path.join(PROJECT_ROOT, "backend", "checkpoints"),
+        "load_error": engine.load_error,
     }
 
 
@@ -64,17 +65,30 @@ def _record_sighting(
     the Capture Log has a real frame to show, not just metadata."""
     import sqlite3
     import datetime
+    from backend.app.simulation.anomaly_engine import ConflictAlertClassifier
 
     st_id = station or "PTR_CAM_014"
     db_path = os.path.join(PROJECT_ROOT, "backend", "data", "pench_unified.db")
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
 
-    cur.execute("SELECT latitude, longitude, zone FROM camera_stations WHERE camera_id = ?", (st_id,))
+    cur.execute("SELECT latitude, longitude, zone, nearest_village_km, nearest_water_km FROM camera_stations WHERE camera_id = ?", (st_id,))
     st_row = cur.fetchone()
     lat = st_row[0] if st_row else 21.65
     lon = st_row[1] if st_row else 79.25
     zone = st_row[2] if st_row else "CORE"
+    village_km = st_row[3] if st_row and st_row[3] is not None else 99.0
+    water_km = st_row[4] if st_row and st_row[4] is not None else 0.0
+
+    # Same conflict-risk taxonomy live ranger-GPS alerts use (see
+    # patrol_alerts.py) — a camera-trap tiger sighting near a village is a
+    # human-wildlife-conflict trigger just as much as a ranger's own
+    # proximity, so both paths should agree on thresholds/wording.
+    risk = ConflictAlertClassifier.classify_sighting_threat(
+        lat=lat, lon=lon, zone=zone,
+        dist_to_nearest_village_km=village_km,
+        dist_to_nearest_water_km=water_km,
+    )
 
     ts = datetime.datetime.now().isoformat(timespec="seconds")
     evt_id = f"EVT_LIVE_{uuid.uuid4().hex[:6].upper()}"
@@ -84,7 +98,7 @@ def _record_sighting(
         INSERT INTO sightings
         (event_id, tiger_id, camera_id, timestamp, latitude, longitude, zone, flank_side, speed_kmh, image_quality, alert_level, threat_reason, image_path)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (evt_id, tiger_id, st_id, ts, lat, lon, zone, flank, 3.5, 0.95, "SAFE" if zone == "CORE" else "CAUTION", f"Live Camera Scan at {st_id}", image_path))
+    """, (evt_id, tiger_id, st_id, ts, lat, lon, zone, flank, 3.5, 0.95, risk["alert_level"], f"{risk['reason']} (Live Camera Scan at {st_id})", image_path))
 
     cur.execute("UPDATE tiger_profiles SET total_captures = total_captures + 1 WHERE tiger_id = ?", (tiger_id,))
     conn.commit()

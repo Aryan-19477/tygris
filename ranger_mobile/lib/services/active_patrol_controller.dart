@@ -9,6 +9,7 @@ import '../core/sync_status.dart';
 import '../data/repository.dart';
 import '../models/gps_point.dart';
 import '../models/patrol.dart';
+import 'sync_queue_service.dart';
 
 /// Owns the single "patrol currently in progress" for the app: starting,
 /// pausing, resuming, ending, and — the ranger's actual live position —
@@ -23,17 +24,29 @@ import '../models/patrol.dart';
 /// pushed to the sync queue until the ranger explicitly saves it from
 /// `patrol_review_screen.dart`; an in-progress patrol is a draft, not yet
 /// a finished record to sync.
+///
+/// Separately, while a patrol is active, a periodic [_liveSyncTimer] pushes
+/// the route's newest points to Supabase in near-real-time via
+/// [SyncQueueService.pushLivePatrolUpdate] — this is what lets the backend's
+/// poll loop see a ranger's live position and raise a buffer-zone alert
+/// while the patrol is still happening, rather than only after it ends.
+/// This is best-effort telemetry (silently no-ops offline) and is
+/// independent of the draft/sync-queue distinction above.
 class ActivePatrolController extends StateNotifier<Patrol?> {
   ActivePatrolController(this._ref) : super(null);
+
+  static const _liveSyncInterval = Duration(seconds: 30);
 
   final Ref _ref;
   Timer? _ticker;
   Timer? _simTimer;
+  Timer? _liveSyncTimer;
   StreamSubscription<Position>? _posSub;
   bool _usingRealGps = false;
   bool _gotFirstFix = false;
   final _random = Random();
   DateTime? _lastTickAt;
+  int _lastPushedRouteIndex = 0;
 
   bool get isUsingRealGps => _usingRealGps;
 
@@ -63,7 +76,9 @@ class ActivePatrolController extends StateNotifier<Patrol?> {
     state = patrol;
     await _persist();
     _lastTickAt = now;
+    _lastPushedRouteIndex = 0;
     _startTicker();
+    _startLiveSync();
     unawaited(_startLocation());
   }
 
@@ -99,6 +114,15 @@ class ActivePatrolController extends StateNotifier<Patrol?> {
       endedAt: DateTime.now(),
     );
     unawaited(_persist());
+    // Flush any route points accumulated since the last live-sync tick so
+    // the backend sees the patrol's final leg without waiting on the
+    // (now-cancelled) periodic timer or the ranger completing the review-
+    // screen save.
+    if (state!.route.length > _lastPushedRouteIndex) {
+      final fromIndex = _lastPushedRouteIndex;
+      _lastPushedRouteIndex = state!.route.length;
+      unawaited(_ref.read(syncQueueServiceProvider).pushLivePatrolUpdate(state!, fromIndex: fromIndex));
+    }
     return state!;
   }
 
@@ -143,8 +167,24 @@ class ActivePatrolController extends StateNotifier<Patrol?> {
     _ticker = null;
     _simTimer?.cancel();
     _simTimer = null;
+    _liveSyncTimer?.cancel();
+    _liveSyncTimer = null;
     _posSub?.cancel();
     _posSub = null;
+  }
+
+  void _startLiveSync() {
+    _liveSyncTimer?.cancel();
+    _liveSyncTimer = Timer.periodic(_liveSyncInterval, (_) => unawaited(_pushLiveUpdate()));
+  }
+
+  Future<void> _pushLiveUpdate() async {
+    final s = state;
+    if (s == null || s.status != PatrolStatus.active) return;
+    if (s.route.length <= _lastPushedRouteIndex) return;
+    final fromIndex = _lastPushedRouteIndex;
+    _lastPushedRouteIndex = s.route.length;
+    await _ref.read(syncQueueServiceProvider).pushLivePatrolUpdate(s, fromIndex: fromIndex);
   }
 
   Future<void> _startLocation() async {

@@ -35,6 +35,7 @@ from backend.app.api.routes_captures import router as captures_router
 from backend.app.api.routes_review import router as review_router
 from backend.app.api.routes_embedding import router as embedding_router
 from backend.app.api.routes_screening import router as screening_router
+from backend.app.api.routes_patrol import router as patrol_router
 
 # Ranger-ops routes depend on the `supabase` package, which may not be
 # installed yet in this environment. Import defensively so a missing
@@ -55,12 +56,13 @@ RANGER_OPS_POLL_SECONDS = 60
 
 async def _ranger_ops_poll_loop():
     from backend.app.services.supabase_client import get_supabase_client
+    from backend.app.services.patrol_alerts import run_pending_patrol_zone_checks
 
     if get_supabase_client() is None:
         logger.info("[ranger-ops] Supabase not configured — background polling loop will not run.")
         return
 
-    logger.info(f"[ranger-ops] Starting background territory-check poll loop ({RANGER_OPS_POLL_SECONDS}s interval).")
+    logger.info(f"[ranger-ops] Starting background territory-check + patrol zone-alert poll loop ({RANGER_OPS_POLL_SECONDS}s interval).")
     while True:
         await asyncio.sleep(RANGER_OPS_POLL_SECONDS)
         try:
@@ -69,6 +71,13 @@ async def _ranger_ops_poll_loop():
                 logger.info(f"[ranger-ops] Poll loop processed {result['processed']} new territory check(s).")
         except Exception as exc:
             logger.warning(f"[ranger-ops] Poll loop iteration failed (will retry): {exc}")
+
+        try:
+            zone_result = run_pending_patrol_zone_checks()
+            if zone_result.get("processed"):
+                logger.info(f"[patrol-alerts] Poll loop raised {zone_result['processed']} new buffer-zone alert(s).")
+        except Exception as exc:
+            logger.warning(f"[patrol-alerts] Poll loop iteration failed (will retry): {exc}")
 
 
 @asynccontextmanager
@@ -133,6 +142,7 @@ app.include_router(captures_router)
 app.include_router(review_router)
 app.include_router(embedding_router)
 app.include_router(screening_router)
+app.include_router(patrol_router)
 if _RANGER_OPS_AVAILABLE:
     app.include_router(ranger_ops_router)
 
@@ -158,6 +168,8 @@ def root():
             "/api/ranger/reports",
             "/api/ranger/territory-check/{observation_id}",
             "/api/ranger/territory-check/run-pending",
+            "/api/patrols/active",
+            "/api/patrols/zone-check/run-pending",
         ],
         "ranger_ops_enabled": _RANGER_OPS_AVAILABLE,
     }

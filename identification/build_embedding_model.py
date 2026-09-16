@@ -34,7 +34,14 @@ def _build_source_architecture(input_shape=INPUT_SHAPE, num_classes=NUM_SOURCE_C
 
 
 def build_embedding_model(weights_path=SOURCE_WEIGHTS, embed_dim=EMBED_DIM,
-                           finetuned_weights_path=None):
+                           finetuned_weights_path=None, augment=True, dropout_rate=0.4):
+    """`augment`/`dropout_rate` exist to fight overfitting on the ~1,900-image
+    / 107-identity fine-tuning set (see train_embedding.py's module
+    docstring): both the augmentation layers and Dropout are Keras layers
+    that automatically no-op when the model is called with training=False
+    (as evaluate_embeddings.py's model.predict() does), so eval/inference is
+    unaffected — they only perturb/drop during the training-loop's explicit
+    `model(images, training=True)` calls."""
     source = _build_source_architecture()
     source.load_weights(str(weights_path))
 
@@ -42,10 +49,26 @@ def build_embedding_model(weights_path=SOURCE_WEIGHTS, embed_dim=EMBED_DIM,
     input_shape = source.input_shape[1:]
     inputs = layers.Input(shape=input_shape)
     x = inputs
+
+    if augment:
+        # Train-time-only perturbations, since this dataset has too few
+        # images per identity for the model to see meaningful variation
+        # otherwise. Values are mild — tiger stripe patterns are the
+        # discriminative signal, so avoid aggressive crops/rotations that
+        # would erase the flank markings themselves.
+        x = layers.RandomFlip("horizontal", name="aug_flip")(x)
+        x = layers.RandomRotation(0.04, name="aug_rotate")(x)
+        x = layers.RandomZoom(0.08, name="aug_zoom")(x)
+        x = layers.RandomContrast(0.15, name="aug_contrast")(x)
+        x = layers.RandomBrightness(0.15, value_range=(0, 255), name="aug_brightness")(x)
+
     for layer in source.layers:
         x = layer(x)
         if layer.name == "dense_2":
             break
+
+    if dropout_rate > 0:
+        x = layers.Dropout(dropout_rate, name="embedding_dropout")(x)
 
     x = layers.Lambda(lambda t: tf.math.l2_normalize(t, axis=1), name="l2_normalize")(x)
     embed_model = Model(inputs=inputs, outputs=x, name="tiger_embedding_model")

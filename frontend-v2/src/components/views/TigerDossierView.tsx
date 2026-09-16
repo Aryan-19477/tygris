@@ -56,13 +56,22 @@ export function TigerDossierView({
 }) {
   const { t } = useLanguage();
   const [detail, setDetail] = useState<GalleryDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"pose" | "timeline" | "barcode">("timeline");
 
   useEffect(() => {
-    api.galleryDetail(tigerId).then(setDetail).catch((err) => {
-      console.error("[TigerDossierView] Error fetching detail:", err);
-    });
-  }, [tigerId]);
+    setLoading(true);
+    setError(null);
+    setDetail(null);
+    api.galleryDetail(tigerId)
+      .then(setDetail)
+      .catch((err) => {
+        console.error("[TigerDossierView] Error fetching detail:", err);
+        setError(t("dossier.fetchError"));
+      })
+      .finally(() => setLoading(false));
+  }, [tigerId, t]);
 
   const hue = hueForId(tigerId);
   const profile = detail?.profile;
@@ -149,12 +158,16 @@ export function TigerDossierView({
                 <div>
                   <div className="font-mono text-xl font-bold text-foreground">{tigerId}</div>
                   <div className="text-xs text-muted font-mono mt-0.5">
-                    {profile?.name || t("dossier.defaultProfileName")} • {profile?.sex || "FEMALE"} • {profile?.age_years?.toFixed(1) || 4.5}y
+                    {loading
+                      ? t("common.loading")
+                      : `${profile?.name || tigerId} • ${profile?.sex || t("common.unknown")}${
+                          profile?.age_years != null ? ` • ${profile.age_years.toFixed(1)}y` : ""
+                        }`}
                   </div>
                 </div>
 
                 <div className="space-y-2.5 border-t border-border pt-3 text-xs font-mono">
-                  <BioRow icon={Compass} label={t("dossier.homeRange")} value={`${profile?.mcp_area_km2 || 38.5} km²`} highlight />
+                  <BioRow icon={Compass} label={t("dossier.homeRange")} value={profile?.mcp_area_km2 != null ? `${profile.mcp_area_km2} km²` : "—"} highlight />
                   <BioRow icon={Calendar} label={t("dossier.firstRecorded")} value={firstSeen ? formatDate(firstSeen.timestamp, t("common.unknownDate")) : "—"} />
                   <BioRow icon={Calendar} label={t("dossier.lastRecorded")} value={lastSeen ? formatDate(lastSeen.timestamp, t("common.unknownDate")) : "—"} />
                   <BioRow icon={MapPin} label={t("dossier.primaryStation")} value={stationHistory[0]?.[0] || "—"} />
@@ -217,8 +230,16 @@ export function TigerDossierView({
               </button>
             </div>
 
+            {error && (
+              <div className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-xs font-mono text-danger">
+                {error}
+              </div>
+            )}
+
             {activeTab === "timeline" && (
-              timeline.length === 0 ? (
+              loading ? (
+                <div className="h-40 w-full rounded-xl border border-border bg-surface-sunken animate-pulse" />
+              ) : timeline.length === 0 ? (
                 <EmptySightingState />
               ) : (
                 <SightingWindowSlider
@@ -279,10 +300,13 @@ export function TigerDossierView({
                       ? (detail?.pose_analysis?.keypoints as import("@/components/PoseSkeletonViewer").Keypoint[])
                       : undefined
                   }
+                  connections={
+                    Array.isArray(detail?.pose_analysis?.skeleton_connections)
+                      ? (detail?.pose_analysis?.skeleton_connections as [number, number][])
+                      : undefined
+                  }
                   flankSide={detail?.pose_analysis?.flank || "Left"}
                   confidence={detail?.pose_analysis?.confidence || 0.96}
-                  width={640}
-                  height={360}
                 />
               </div>
             )}

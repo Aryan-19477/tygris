@@ -535,7 +535,7 @@ class _Thumbnail extends StatelessWidget {
       return const _ThumbnailFallback();
     }
     return CachedNetworkImage(
-      imageUrl: url!,
+      imageUrl: resolveMediaUrl(url!),
       fit: BoxFit.cover,
       placeholder: (context, _) => Container(color: AppColors.surfaceSunken),
       errorWidget: (context, _, __) => const _ThumbnailFallback(),

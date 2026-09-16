@@ -1,5 +1,18 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
+
+/// Mirrors frontend-v2's captureImageSrc: backend image fields are either
+/// absolute URLs or server-relative paths ("/captures/EVT_x.jpg",
+/// "/tigers/T103_F.jpg" — both mounted as StaticFiles in backend/main.py),
+/// so relative ones must be joined with the configured base URL.
+String resolveMediaUrl(String path) {
+  if (path.startsWith('http://') ||
+      path.startsWith('https://') ||
+      path.startsWith('data:')) {
+    return path;
+  }
+  final base = ApiClient.instance.baseUrl.replaceFirst(RegExp(r'/+$'), '');
+  return path.startsWith('/') ? '$base$path' : '$base/$path';
+}
 
 /// Default backend base. Override at runtime via [ApiClient.configureBaseUrl]
 /// (persisted through SettingsRepository) — mirrors frontend-v2's
@@ -32,6 +45,12 @@ class ApiException implements Exception {
 
   @override
   String toString() => 'ApiException($statusCode): $message';
+}
+
+/// User-facing message for anything a repository call can throw.
+String describeError(Object? e) {
+  if (e is ApiException) return e.message;
+  return e?.toString().replaceFirst('Exception: ', '') ?? 'Request failed';
 }
 
 Exception mapDioError(DioException e) {

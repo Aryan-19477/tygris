@@ -130,25 +130,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "message is required" }, { status: 400 });
   }
 
-  try {
-    // Groq (gpt-oss-120b) is fast and has a much higher free-tier request
-    // ceiling than Gemini's, but its Marathi comprehension tested unreliable
-    // (misread valid Marathi questions as unclear). Gemini tested fine on
-    // Marathi, so route mr there specifically; Groq handles en/hi, which is
-    // the bulk of expected traffic and where its quota headroom matters most.
-    const useGemini = lang === "mr" && !!geminiKey;
-    const answer = useGemini
-      ? await answerWithGemini(message, lang, history, geminiKey!)
-      : groqKey
-        ? await answerWithGroq(message, lang, history, groqKey)
-        : await answerWithGemini(message, lang, history, geminiKey!);
+  // Groq (gpt-oss-120b) is fast and has a much higher free-tier request
+  // ceiling than Gemini's, but its Marathi comprehension tested unreliable
+  // (misread valid Marathi questions as unclear). Gemini tested fine on
+  // Marathi, so try it first for mr; Groq handles en/hi. Whichever runs
+  // first, the other provider is tried if it fails (rate limit, outage).
+  const groq = groqKey ? () => answerWithGroq(message, lang, history, groqKey) : null;
+  const gemini = geminiKey ? () => answerWithGemini(message, lang, history, geminiKey) : null;
+  const providers = (lang === "mr" ? [gemini, groq] : [groq, gemini]).filter((p) => p !== null);
 
-    return NextResponse.json({ answer, lang });
-  } catch (err) {
-    console.error("[assistant] request failed:", err);
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Assistant request failed." },
-      { status: 500 }
-    );
+  let lastError: unknown;
+  for (const provider of providers) {
+    try {
+      const answer = stripMarkdown(await provider());
+      return NextResponse.json({ answer, lang });
+    } catch (err) {
+      console.error("[assistant] provider failed:", err);
+      lastError = err;
+    }
   }
+
+  return NextResponse.json(
+    { error: lastError instanceof Error ? lastError.message : "Assistant request failed." },
+    { status: 500 }
+  );
+}
+
+// Answers are shown as plain text and read aloud, so drop markdown emphasis/headers/bullets.
+function stripMarkdown(text: string) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .trim();
 }
