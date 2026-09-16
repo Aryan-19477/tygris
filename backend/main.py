@@ -85,6 +85,11 @@ async def _ranger_ops_poll_loop():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_prey_tables()
+    # Load (and, on a fresh deploy, download via CHECKPOINT_URL) the ReID
+    # model here rather than lazily on first request - otherwise whichever
+    # user's request happens to be first pays for the ~190MB download.
+    from backend.app.ml.reid_embedding import TigerReIDEngine
+    TigerReIDEngine.get()
     task = None
     if _RANGER_OPS_AVAILABLE:
         task = asyncio.create_task(_ranger_ops_poll_loop())
