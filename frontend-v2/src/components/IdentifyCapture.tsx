@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   UploadSimple,
   Sparkle,
@@ -14,6 +14,12 @@ import {
   CaretDown,
 } from "@phosphor-icons/react";
 import { api, type IdentifyResult, type ScreeningResult } from "@/lib/api";
+import {
+  finalizeClientIdentification,
+  identifyClientSide,
+  isClientInferenceLikelySupported,
+  prewarmClientIdentify,
+} from "@/lib/clientIdentify";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
 type Phase = "idle" | "screening" | "identifying" | "result" | "noFrame" | "error";
@@ -21,6 +27,22 @@ type Phase = "idle" | "screening" | "identifying" | "result" | "noFrame" | "erro
 async function dataUrlToFile(dataUrl: string, name: string): Promise<File> {
   const blob = await (await fetch(dataUrl)).blob();
   return new File([blob], name, { type: blob.type || "image/jpeg" });
+}
+
+/** Runs the match on the user's own device (ONNX model + gallery in the
+ * browser) whenever the browser can plausibly support it, falling back to
+ * the server-hosted pipeline on any runtime failure — old devices, a
+ * blocked model download, WebAssembly disabled, etc. */
+async function runIdentify(file: File, stationId?: string): Promise<IdentifyResult> {
+  if (isClientInferenceLikelySupported()) {
+    try {
+      const clientResult = await identifyClientSide(file, stationId);
+      return await finalizeClientIdentification(file, clientResult, stationId);
+    } catch (err) {
+      console.warn("[IdentifyCapture] Client-side inference failed, falling back to server:", err);
+    }
+  }
+  return api.identify(file, stationId);
 }
 
 /**
@@ -39,6 +61,13 @@ export function IdentifyCapture({ stationId }: { stationId?: string }) {
   const [showFrames, setShowFrames] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Starts downloading the ~100MB embedding model + reference gallery as
+  // soon as the capture box mounts, so the one-time cost lands before the
+  // user's first upload instead of stalling the "identifying" spinner.
+  useEffect(() => {
+    prewarmClientIdentify();
+  }, []);
 
   const reset = () => {
     setPhase("idle");
@@ -75,7 +104,7 @@ export function IdentifyCapture({ stationId }: { stationId?: string }) {
           setPreview(URL.createObjectURL(file));
         }
         setPhase("identifying");
-        setResult(await api.identify(imageFile, stationId));
+        setResult(await runIdentify(imageFile, stationId));
         setPhase("result");
       } catch (e) {
         setErrorMsg(e instanceof Error ? e.message : null);

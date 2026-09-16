@@ -121,6 +121,14 @@ _TIGERS_DIR = os.path.join(PROJECT_ROOT, "frontend-v2", "public", "tigers")
 if os.path.exists(_TIGERS_DIR):
     app.mount("/tigers", StaticFiles(directory=_TIGERS_DIR), name="tigers")
 
+# Serves trained_gallery.json (tiger_id + 64-D embedding per reference
+# entry) so the client-side (browser) ONNX inference pipeline can fetch
+# the same reference gallery the server-side TigerReIDEngine matches
+# against, without needing a dedicated API route.
+_GALLERY_DATA_DIR = os.path.join(PROJECT_ROOT, "backend", "data", "gallery")
+if os.path.exists(_GALLERY_DATA_DIR):
+    app.mount("/gallery-data", StaticFiles(directory=_GALLERY_DATA_DIR), name="gallery-data")
+
 # One-time, idempotent migration: older copies of pench_unified.db (this
 # file is committed to the repo as seed data) predate the Capture Log and
 # don't have this column yet. Adding it here — rather than requiring a

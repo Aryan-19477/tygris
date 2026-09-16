@@ -37,6 +37,12 @@
 /detection/runs/predict/
 /detection/runs/tiger_yolov8n/weights/last.pt
 
+# ONNX export intermediates (fp32 sources + external-weight .onnx.data
+# files, ~600MB total) — reproducible via backend/scripts/export_onnx.py,
+# never meant to be committed. The one file actually shipped to users
+# (convnext_metric_fp16.onnx) is hosted on Vercel Blob, not in git.
+/backend/onnx_export/
+
 # Large Model Weights & Checkpoints (>100MB hard limit on GitHub)
 *.h5
 *.keras

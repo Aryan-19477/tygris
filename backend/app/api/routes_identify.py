@@ -106,27 +106,12 @@ def _record_sighting(
     return {"recorded_event_id": evt_id, "recorded_status": "SAVED_TO_GRAPH"}
 
 
-@router.post("/identify")
-async def identify_image(
-    file: UploadFile = File(...),
-    station: Optional[str] = Query(None, description="Camera station ID (e.g. PTR_CAM_014)")
-):
-    """
-    Matches an uploaded camera-trap photo against the 44-tiger reference
-    gallery by embedding cosine similarity. Only ever returns tiger IDs
-    that are real, enrolled individuals in tiger_profiles.
-    """
-    engine = TigerReIDEngine.get()
-    try:
-        contents = await file.read()
-        Image.open(io.BytesIO(contents)).convert("RGB")  # validates it's a real image
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid image file: {e}")
-
-    result = engine.identify(contents)
-    result["uploaded_image"] = "data:image/jpeg;base64," + __import__("base64").b64encode(contents).decode("utf-8")
-    result["station_id"] = station
-
+def _finalize_identification(result: dict, station: Optional[str], contents: bytes) -> dict:
+    """Shared post-processing for a completed identify() result, regardless
+    of whether the embedding + gallery match ran server-side (TigerReIDEngine)
+    or client-side (browser ONNX pipeline against /gallery-data). Records
+    auto-matched sightings and enqueues low-confidence ones for review so
+    both paths feed the same Capture Log / review queue."""
     if result.get("decision") == "auto_match" and result.get("tiger_id"):
         try:
             result.update(_record_sighting(result["tiger_id"], station, image_bytes=contents))
@@ -155,6 +140,82 @@ async def identify_image(
             print(f"[routes_identify] Review-queue recording note: {e}")
 
     return result
+
+
+@router.post("/identify")
+async def identify_image(
+    file: UploadFile = File(...),
+    station: Optional[str] = Query(None, description="Camera station ID (e.g. PTR_CAM_014)")
+):
+    """
+    Matches an uploaded camera-trap photo against the 44-tiger reference
+    gallery by embedding cosine similarity. Only ever returns tiger IDs
+    that are real, enrolled individuals in tiger_profiles.
+    """
+    engine = TigerReIDEngine.get()
+    try:
+        contents = await file.read()
+        Image.open(io.BytesIO(contents)).convert("RGB")  # validates it's a real image
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid image file: {e}")
+
+    result = engine.identify(contents)
+    result["uploaded_image"] = "data:image/jpeg;base64," + __import__("base64").b64encode(contents).decode("utf-8")
+    result["station_id"] = station
+
+    return _finalize_identification(result, station, contents)
+
+
+@router.post("/identify/finalize")
+async def identify_finalize(
+    file: UploadFile = File(...),
+    decision: str = Query(...),
+    status: str = Query(...),
+    tiger_id: Optional[str] = Query(None),
+    predicted_tiger_id: Optional[str] = Query(None),
+    confidence: float = Query(0.0),
+    candidates_json: str = Query("[]"),
+    gallery_size: int = Query(0),
+    auto_accept_threshold: Optional[float] = Query(None),
+    review_floor: Optional[float] = Query(None),
+    station: Optional[str] = Query(None, description="Camera station ID (e.g. PTR_CAM_014)"),
+):
+    """
+    Records/reviews a match that was already computed client-side (browser
+    ONNX inference against /gallery-data/trained_gallery.json). Keeps the
+    Capture Log, sighting DB, and review queue behaving identically whether
+    the embedding + gallery match ran on this server or on the user's own
+    device — see _finalize_identification.
+    """
+    import json as _json
+
+    try:
+        contents = await file.read()
+        Image.open(io.BytesIO(contents)).convert("RGB")  # validates it's a real image
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid image file: {e}")
+
+    try:
+        candidates = _json.loads(candidates_json)
+    except Exception:
+        candidates = []
+
+    result = {
+        "decision": decision,
+        "status": status,
+        "tiger_id": tiger_id,
+        "predicted_tiger_id": predicted_tiger_id,
+        "confidence": confidence,
+        "candidates": candidates,
+        "gallery_size": gallery_size,
+        "auto_accept_threshold": auto_accept_threshold,
+        "review_floor": review_floor,
+        "model_status": "trained-client-onnx",
+        "uploaded_image": "data:image/jpeg;base64," + __import__("base64").b64encode(contents).decode("utf-8"),
+        "station_id": station,
+    }
+
+    return _finalize_identification(result, station, contents)
 
 
 @router.post("/identify-burst")
