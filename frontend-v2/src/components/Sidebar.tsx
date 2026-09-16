@@ -16,6 +16,9 @@ import {
   CaretDown,
   CaretLeft,
   CaretRight,
+  MagnifyingGlass,
+  ChartBar,
+  CheckCircle,
 } from "@phosphor-icons/react";
 import type { View } from "./AppShell";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
@@ -51,6 +54,15 @@ const NAV: NavEntry[] = [
       { id: "rangerReports", key: "nav.rangerReports", icon: Binoculars },
     ],
   },
+  {
+    groupKey: "nav.preyIntelligence",
+    icon: Binoculars,
+    children: [
+      { id: "preyChecker", key: "nav.preyChecker", icon: MagnifyingGlass },
+      { id: "preyInsights", key: "nav.preyInsights", icon: ChartBar },
+      { id: "preyReview", key: "nav.preyReview", icon: CheckCircle },
+    ],
+  },
   { id: "settings", key: "nav.settings", icon: GearSix },
 ];
 
@@ -71,6 +83,7 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "nav.population": true,
+    "nav.preyIntelligence": true,
   });
 
   const toggleGroup = (key: string) =>

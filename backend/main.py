@@ -36,6 +36,8 @@ from backend.app.api.routes_review import router as review_router
 from backend.app.api.routes_embedding import router as embedding_router
 from backend.app.api.routes_screening import router as screening_router
 from backend.app.api.routes_patrol import router as patrol_router
+from backend.app.api.routes_prey import router as prey_router
+from backend.app.prey.db import init_prey_tables
 
 # Ranger-ops routes depend on the `supabase` package, which may not be
 # installed yet in this environment. Import defensively so a missing
@@ -82,6 +84,7 @@ async def _ranger_ops_poll_loop():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_prey_tables()
     task = None
     if _RANGER_OPS_AVAILABLE:
         task = asyncio.create_task(_ranger_ops_poll_loop())
@@ -143,6 +146,7 @@ app.include_router(review_router)
 app.include_router(embedding_router)
 app.include_router(screening_router)
 app.include_router(patrol_router)
+app.include_router(prey_router)
 if _RANGER_OPS_AVAILABLE:
     app.include_router(ranger_ops_router)
 
@@ -165,6 +169,10 @@ def root():
             "/api/review-queue",
             "/api/embedding-space",
             "/api/screening/process-video",
+            "/api/prey/identify-check",
+            "/api/prey/insights/summary",
+            "/api/prey/observations",
+            "/api/prey/review-queue",
             "/api/ranger/reports",
             "/api/ranger/territory-check/{observation_id}",
             "/api/ranger/territory-check/run-pending",
