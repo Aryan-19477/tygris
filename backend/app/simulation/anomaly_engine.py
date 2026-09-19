@@ -31,8 +31,32 @@ ANOMALY_TAXONOMY = {
     "TERRITORY_DISPLACEMENT": {"code": "SHFT_01", "name": "Territorial Displacement by Rival", "base_severity": 4, "alert": "CAUTION"},
     "RANGE_EXPANSION": {"code": "SHFT_02", "name": "Home Range Expansion (>15 km²)", "base_severity": 2, "alert": "SAFE"},
     "RANGE_CONTRACTION": {"code": "SHFT_03", "name": "Home Range Contraction", "base_severity": 2, "alert": "CAUTION"},
-    "GENUINE_PROLONGED_ABSENCE": {"code": "ABSC_01", "name": "Genuine Behavioral Absence (>45 Days)", "base_severity": 5, "alert": "CRITICAL"}
+    "GENUINE_PROLONGED_ABSENCE": {"code": "ABSC_01", "name": "Genuine Behavioral Absence (>45 Days)", "base_severity": 5, "alert": "CRITICAL"},
+    "MALE_TERRITORY_CONFLICT": {"code": "CONF_01", "name": "Male-Male Territory Overlap (Fight Risk)", "base_severity": 4, "alert": "CRITICAL"},
+    "UNIDENTIFIED_TIGER": {"code": "UNID_01", "name": "Unidentified / Unenrolled Tiger Detected", "base_severity": 2, "alert": "CAUTION"},
 }
+
+
+# The three ranger-facing alert categories the dashboard groups by, ranked
+# by operational priority: a tiger near a village is always the most
+# urgent (direct human-wildlife-conflict risk), a male-male territory
+# overlap is the next most urgent (a fight can injure or kill a resident
+# tiger), and an unidentified tiger is a lower-urgency "go verify this"
+# flag. Anything else in ANOMALY_TAXONOMY falls back to "GENERAL".
+ALERT_CATEGORY_BY_ANOMALY = {
+    "VILLAGE_APPROACH": "VILLAGE_PROXIMITY",
+    "PERSISTENT_VILLAGE_PROXIMITY": "VILLAGE_PROXIMITY",
+    "RESERVE_BOUNDARY_EXIT": "VILLAGE_PROXIMITY",
+    "MALE_TERRITORY_CONFLICT": "MALE_TERRITORY_CONFLICT",
+    "UNIDENTIFIED_TIGER": "UNIDENTIFIED_TIGER",
+}
+
+
+def categorize_anomaly(anomaly_class: Optional[str]) -> str:
+    """Maps a `sightings.anomaly_class` value to one of the three named
+    alert categories (village proximity / male territory conflict /
+    unidentified tiger), or "GENERAL" for every other anomaly class."""
+    return ALERT_CATEGORY_BY_ANOMALY.get(anomaly_class or "", "GENERAL")
 
 
 class BayesianAbsenceReasoner:

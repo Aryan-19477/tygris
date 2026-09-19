@@ -13,6 +13,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from backend.app.simulation.anomaly_engine import categorize_anomaly
+
 router = APIRouter(prefix="/api", tags=["Alerts & Stats"])
 
 DB_PATH = os.path.join(PROJECT_ROOT, "backend", "data", "pench_unified.db")
@@ -42,10 +44,18 @@ _ensure_acknowledged_column()
 @router.get("/alerts")
 def get_alerts(
     limit: int = Query(50, ge=1, le=200),
-    level: Optional[str] = Query(None, description="Filter by level: CRITICAL, CAUTION, SAFE")
+    level: Optional[str] = Query(None, description="Filter by level: CRITICAL, CAUTION, SAFE"),
+    category: Optional[str] = Query(
+        None,
+        description="Filter by category: VILLAGE_PROXIMITY, MALE_TERRITORY_CONFLICT, UNIDENTIFIED_TIGER, GENERAL",
+    ),
 ):
     """
-    Returns real-time conflict alerts and anomalous tiger movements.
+    Returns real-time conflict alerts and anomalous tiger movements, each
+    tagged with `alert_category` (derived from `anomaly_class` — see
+    categorize_anomaly in anomaly_engine.py) so the dashboard can group the
+    three named triggers — village proximity, male-male territory
+    conflict, unidentified tiger — separately from routine anomalies.
     """
     if not os.path.exists(DB_PATH):
         if os.path.exists(BUNDLE_PATH):
@@ -53,8 +63,12 @@ def get_alerts(
                 bundle = json.load(f)
             sightings = bundle.get("recent_sightings", [])
             sightings = [s for s in sightings if s.get("event_id") not in ACKNOWLEDGED_BUNDLE_EVENT_IDS]
+            for s in sightings:
+                s["alert_category"] = categorize_anomaly(s.get("anomaly_class"))
             if level:
                 sightings = [s for s in sightings if s.get("alert_level") == level]
+            if category:
+                sightings = [s for s in sightings if s.get("alert_category") == category]
             return {"alerts": sightings[:limit], "total": len(sightings)}
         return {"alerts": [], "total": 0}
 
@@ -68,16 +82,20 @@ def get_alerts(
             WHERE alert_level = ? AND acknowledged = 0
             ORDER BY timestamp DESC
             LIMIT ?
-        """, (level, limit))
+        """, (level, limit * 3 if category else limit))
     else:
         cur.execute("""
             SELECT * FROM sightings
             WHERE acknowledged = 0
             ORDER BY timestamp DESC
             LIMIT ?
-        """, (limit,))
+        """, (limit * 3 if category else limit,))
 
     alerts = [dict(r) for r in cur.fetchall()]
+    for a in alerts:
+        a["alert_category"] = categorize_anomaly(a.get("anomaly_class"))
+    if category:
+        alerts = [a for a in alerts if a["alert_category"] == category][:limit]
     conn.close()
     return {"alerts": alerts, "total": len(alerts)}
 

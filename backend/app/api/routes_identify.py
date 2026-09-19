@@ -105,14 +105,63 @@ def _record_sighting(
 
     cur.execute("""
         INSERT INTO sightings
-        (event_id, tiger_id, camera_id, timestamp, latitude, longitude, zone, flank_side, speed_kmh, image_quality, alert_level, threat_reason, image_path)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (evt_id, tiger_id, st_id, ts, lat, lon, zone, flank, 3.5, 0.95, risk["alert_level"], f"{risk['reason']} (Live Camera Scan at {st_id})", image_path))
+        (event_id, tiger_id, camera_id, timestamp, latitude, longitude, zone, flank_side, speed_kmh, image_quality, alert_level, threat_reason, image_path, anomaly_class)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (evt_id, tiger_id, st_id, ts, lat, lon, zone, flank, 3.5, 0.95, risk["alert_level"], f"{risk['reason']} (Live Camera Scan at {st_id})", image_path, risk["anomaly_type"]))
 
     cur.execute("UPDATE tiger_profiles SET total_captures = total_captures + 1 WHERE tiger_id = ?", (tiger_id,))
     conn.commit()
     conn.close()
+
+    # A tiger identified near a village is already flagged above via
+    # ConflictAlertClassifier. Separately, check whether this sighting puts
+    # two resident males within fight-risk range of each other (see
+    # territory_conflict.py) — village proximity and male-male conflict are
+    # independent triggers, so both can fire off the same sighting.
+    try:
+        from backend.app.services.territory_conflict import check_male_territory_conflict
+        check_male_territory_conflict(tiger_id, st_id, ts)
+    except Exception as e:
+        print(f"[routes_identify] Male-territory-conflict check note: {e}")
+
     return {"recorded_event_id": evt_id, "recorded_status": "SAVED_TO_GRAPH"}
+
+
+def _write_unidentified_alert(station: Optional[str], review_item_id: str, reason: str) -> None:
+    """Every `needs_review` identify() result is, by definition, a tiger the
+    gallery couldn't confidently place — surface that in the same
+    `/api/alerts` feed the village-proximity and male-conflict triggers use
+    (tagged "UNIDENTIFIED_TIGER"), so a ranger sees it in the main alert
+    queue without having to separately remember to check the review queue.
+    `source_ref` ties this 1:1 to the review item so re-polling the same
+    photo never double-alerts."""
+    import sqlite3
+    import datetime
+    from backend.app.services.alert_writer import write_field_alert
+
+    lat = lon = zone = None
+    if station:
+        db_path = os.path.join(PROJECT_ROOT, "backend", "data", "pench_unified.db")
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT latitude, longitude, zone FROM camera_stations WHERE camera_id = ?", (station,))
+        row = cur.fetchone()
+        conn.close()
+        if row:
+            lat, lon, zone = row
+
+    write_field_alert(
+        event_prefix="EVT_UNID_",
+        alert_level="CAUTION",
+        threat_reason=f"Unidentified tiger — no gallery match cleared the auto-accept threshold. {reason}",
+        source_ref=f"REVIEW_{review_item_id}",
+        latitude=lat,
+        longitude=lon,
+        zone=zone,
+        camera_id=station,
+        timestamp=datetime.datetime.now().isoformat(timespec="seconds"),
+        anomaly_class="UNIDENTIFIED_TIGER",
+    )
 
 
 def _finalize_identification(result: dict, station: Optional[str], contents: bytes) -> dict:
@@ -145,6 +194,7 @@ def _finalize_identification(result: dict, station: Optional[str], contents: byt
                 candidates=candidates,
                 reason=reason,
             )
+            _write_unidentified_alert(station, result["review_item_id"], reason)
         except Exception as e:
             print(f"[routes_identify] Review-queue recording note: {e}")
 

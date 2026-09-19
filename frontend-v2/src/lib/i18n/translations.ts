@@ -120,6 +120,10 @@ export const en = {
     conflictExplainer:
       "This is a movement alert, not an identification decision — the tiger has already been identified. Coordinate a field response if the proximity warrants one.",
     markHandled: "Mark as handled",
+    categoryVillage: "Village proximity",
+    categoryMaleConflict: "Male territory conflict",
+    categoryUnidentified: "Unidentified tiger",
+    categoryGeneral: "General anomaly",
   },
   identify: {
     title: "Identify",
@@ -512,6 +516,10 @@ export const hi: Dictionary = {
     conflictExplainer:
       "यह एक गतिविधि चेतावनी है, पहचान का निर्णय नहीं — बाघ की पहचान पहले ही हो चुकी है। यदि निकटता उचित हो तो फील्ड प्रतिक्रिया समन्वित करें।",
     markHandled: "निपटाया गया चिह्नित करें",
+    categoryVillage: "गाँव निकटता",
+    categoryMaleConflict: "नर क्षेत्र संघर्ष",
+    categoryUnidentified: "अज्ञात बाघ",
+    categoryGeneral: "सामान्य विसंगति",
   },
   identify: {
     title: "पहचान",
@@ -902,6 +910,10 @@ export const mr: Dictionary = {
     conflictExplainer:
       "हा एक हालचाल इशारा आहे, ओळखीचा निर्णय नाही — वाघाची ओळख आधीच पटलेली आहे. निकटता योग्य वाटल्यास क्षेत्रीय प्रतिसाद समन्वयित करा.",
     markHandled: "हाताळले असे चिन्हांकित करा",
+    categoryVillage: "गाव निकटता",
+    categoryMaleConflict: "नर प्रादेशिक संघर्ष",
+    categoryUnidentified: "अज्ञात वाघ",
+    categoryGeneral: "सामान्य विसंगती",
   },
   identify: {
     title: "ओळख",

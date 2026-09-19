@@ -89,6 +89,7 @@ def _write_patrol_risk_alert(patrol_id: str, ranger_id: Any, point: Dict[str, An
         longitude=point.get("lon"),
         zone=risk["zone"],
         timestamp=point.get("timestamp"),
+        anomaly_class=risk.get("anomaly_type"),
     )
 
 

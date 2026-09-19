@@ -152,6 +152,8 @@ export interface Sighting {
   zone?: string;
   timestamp: string | null;
   alert_level?: string;
+  /** One of VILLAGE_PROXIMITY, MALE_TERRITORY_CONFLICT, UNIDENTIFIED_TIGER, GENERAL — see categorize_anomaly in anomaly_engine.py. */
+  alert_category?: string;
   threat_reason?: string;
   speed_kmh?: number;
 }

@@ -71,10 +71,14 @@ def write_field_alert(
     tiger_id: Optional[str] = None,
     camera_id: Optional[str] = None,
     timestamp: Optional[str] = None,
+    anomaly_class: Optional[str] = None,
 ) -> Optional[str]:
     """Inserts one alert row into `sightings`, skipping it if `source_ref`
     has already produced an alert. Returns the new event_id, or None if it
-    was a duplicate or the DB doesn't exist."""
+    was a duplicate or the DB doesn't exist. `anomaly_class` should be one
+    of the keys in ANOMALY_TAXONOMY (anomaly_engine.py) when the caller
+    wants this alert to resolve to a named category via categorize_anomaly
+    (village proximity / male territory conflict / unidentified tiger)."""
     if not os.path.exists(DB_PATH):
         return None
     if alert_already_recorded(source_ref):
@@ -88,9 +92,9 @@ def write_field_alert(
     evt_id = f"{event_prefix}{uuid.uuid4().hex[:6].upper()}"
     cur.execute("""
         INSERT INTO sightings
-        (event_id, tiger_id, camera_id, timestamp, latitude, longitude, zone, alert_level, threat_reason, source_ref)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (evt_id, tiger_id, camera_id, ts, latitude, longitude, zone, alert_level, threat_reason, source_ref))
+        (event_id, tiger_id, camera_id, timestamp, latitude, longitude, zone, alert_level, threat_reason, source_ref, anomaly_class)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (evt_id, tiger_id, camera_id, ts, latitude, longitude, zone, alert_level, threat_reason, source_ref, anomaly_class))
     conn.commit()
     conn.close()
     return evt_id

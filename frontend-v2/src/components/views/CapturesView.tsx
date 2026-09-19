@@ -16,12 +16,15 @@ import {
   Trash,
   ArrowRight,
   CaretDown,
+  House,
+  Sword,
+  Question,
 } from "@phosphor-icons/react";
 import { TopBar } from "@/components/TopBar";
 import { Card, SectionLabel, Pill, StatCard, EmptyState } from "@/components/ui";
 import { useNavigation } from "@/lib/navigation-context";
 import { api, captureImageSrc, type Stats, type GalleryIndividual, type GISStation, type CaptureLogItem } from "@/lib/api";
-import { buildAttentionQueue, type AttentionItem, type UrgencyLevel } from "@/lib/attention";
+import { buildAttentionQueue, type AttentionItem, type UrgencyLevel, type AlertCategory } from "@/lib/attention";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { ImageBroken } from "@phosphor-icons/react";
 
@@ -39,6 +42,13 @@ const URGENCY_STYLE: Record<UrgencyLevel, { labelKey: string; bg: string; border
   CRITICAL: { labelKey: "attention.urgencyCritical", bg: "bg-danger-soft", border: "border-danger/40", tone: "danger" },
   CAUTION: { labelKey: "attention.urgencyCaution", bg: "bg-caution-soft", border: "border-caution/40", tone: "caution" },
   ROUTINE: { labelKey: "attention.urgencyRoutine", bg: "bg-surface-sunken", border: "border-border", tone: "neutral" },
+};
+
+const CATEGORY_STYLE: Record<AlertCategory, { labelKey: string; icon: typeof House }> = {
+  VILLAGE_PROXIMITY: { labelKey: "attention.categoryVillage", icon: House },
+  MALE_TERRITORY_CONFLICT: { labelKey: "attention.categoryMaleConflict", icon: Sword },
+  UNIDENTIFIED_TIGER: { labelKey: "attention.categoryUnidentified", icon: Question },
+  GENERAL: { labelKey: "attention.categoryGeneral", icon: WarningCircle },
 };
 
 function formatTime(iso: string | undefined, unknownLabel: string) {
@@ -389,6 +399,8 @@ function QueueCard({
 }) {
   const { t } = useLanguage();
   const style = URGENCY_STYLE[item.urgency];
+  const catStyle = CATEGORY_STYLE[item.category];
+  const CatIcon = catStyle.icon;
   return (
     <motion.button
       onClick={onClick}
@@ -406,15 +418,19 @@ function QueueCard({
         </div>
       ) : (
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-muted">
-          <WarningCircle size={20} />
+          <CatIcon size={20} />
         </div>
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <Pill tone={style.tone}>{t(style.labelKey)}</Pill>
-          <span className="truncate text-sm font-medium text-foreground">{item.headline}</span>
+          <span className="flex items-center gap-1 text-2xs font-medium text-muted">
+            <CatIcon size={11} />
+            {t(catStyle.labelKey)}
+          </span>
         </div>
-        <p className="mt-1 truncate text-xs text-muted">{item.detail}</p>
+        <p className="mt-1.5 truncate text-sm font-medium text-foreground">{item.headline}</p>
+        <p className="mt-0.5 truncate text-xs text-muted">{item.detail}</p>
       </div>
     </motion.button>
   );
@@ -433,6 +449,8 @@ function QueueDetail({
 }) {
   const { t } = useLanguage();
   const style = URGENCY_STYLE[item.urgency];
+  const catStyle = CATEGORY_STYLE[item.category];
+  const CatIcon = catStyle.icon;
 
   return (
     <motion.div
@@ -442,10 +460,14 @@ function QueueDetail({
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       className="overflow-hidden rounded-2xl border border-border bg-surface"
     >
-      <div className="flex items-center justify-between border-b border-border px-5 py-4">
+      <div className="flex items-center gap-2 border-b border-border px-5 py-4">
         <Pill tone={style.tone} className="px-2.5 py-1">
           {t(style.labelKey)}
         </Pill>
+        <span className="flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted">
+          <CatIcon size={13} />
+          {t(catStyle.labelKey)}
+        </span>
       </div>
 
       {item.image && (
@@ -509,7 +531,9 @@ function QueueDetail({
         {item.kind === "conflict" && (
           <>
             <div className="mt-5 rounded-xl border border-border bg-surface-sunken p-3 text-xs text-muted">
-              {t("attention.conflictExplainer")}
+              {item.category === "UNIDENTIFIED_TIGER"
+                ? t("attention.categoryUnidentified") + " — see the Review tab's ambiguous-identity item for this capture to assign or enroll it."
+                : t("attention.conflictExplainer")}
             </div>
 
             <button
